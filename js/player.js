@@ -66,6 +66,15 @@ export const playerSystem = {
       iFrames: 0,        // seconds of invincibility remaining
       fireCooldown: 0,   // seconds until next shot
 
+      // Active power-up modifiers. Numeric fields = seconds remaining.
+      // Booleans = one-shot effects (true until consumed).
+      modifiers: {
+        shield_bubble: false,
+        speed_boost: 0,
+        damage_up: 0,
+        score_multiplier: 0,
+      },
+
       // weapon
       weaponId: gs.data?.weapons?.defaultWeapon || 'basic',
     };
@@ -86,6 +95,12 @@ export const playerSystem = {
       p.vx = 0; p.vy = 0;
       p.iFrames = 0;
       p.fireCooldown = 0;
+      // Reset weapon + modifiers
+      p.weaponId = gs.data?.weapons?.defaultWeapon || 'basic';
+      p.modifiers.shield_bubble = false;
+      p.modifiers.speed_boost = 0;
+      p.modifiers.damage_up = 0;
+      p.modifiers.score_multiplier = 0;
       for (let i = 0; i < p.trail.length; i++) p.trail[i] = null;
       return;
     }
@@ -102,6 +117,15 @@ export const playerSystem = {
     const cfg = gs.config.player;
     const input = gs.input;
 
+    // ---------- Tick modifier timers ----------
+    const mods = p.modifiers;
+    if (mods.speed_boost > 0)       mods.speed_boost      = Math.max(0, mods.speed_boost      - dt);
+    if (mods.damage_up > 0)         mods.damage_up        = Math.max(0, mods.damage_up        - dt);
+    if (mods.score_multiplier > 0)  mods.score_multiplier = Math.max(0, mods.score_multiplier - dt);
+
+    // Effective max speed (speed_boost = 1.5x)
+    const effMaxSpeed = cfg.maxSpeed * (mods.speed_boost > 0 ? 1.5 : 1);
+
     // ---------- Movement intent ----------
     let targetVx = 0, targetVy = 0;
 
@@ -114,18 +138,18 @@ export const playerSystem = {
         cfg.visualRadius, gs.fieldH - cfg.visualRadius
       );
       p.tx = targetX; p.ty = targetY;
-      targetVx = clamp((targetX - p.x) * TOUCH_STIFFNESS, -cfg.maxSpeed, cfg.maxSpeed);
-      targetVy = clamp((targetY - p.y) * TOUCH_STIFFNESS, -cfg.maxSpeed, cfg.maxSpeed);
+      targetVx = clamp((targetX - p.x) * TOUCH_STIFFNESS, -effMaxSpeed, effMaxSpeed);
+      targetVy = clamp((targetY - p.y) * TOUCH_STIFFNESS, -effMaxSpeed, effMaxSpeed);
     } else {
       // Keyboard
       const v = input.getKeyboardMoveVector();
-      targetVx = v.x * cfg.maxSpeed;
-      targetVy = v.y * cfg.maxSpeed;
+      targetVx = v.x * effMaxSpeed;
+      targetVy = v.y * effMaxSpeed;
     }
 
     // ---------- Velocity smoothing (constant acceleration) ----------
-    // Reach maxSpeed in exactly accelerationFrames @ 60fps
-    const accel = cfg.maxSpeed / (cfg.accelerationFrames / 60);
+    // Reach effMaxSpeed in exactly accelerationFrames @ 60fps
+    const accel = effMaxSpeed / (cfg.accelerationFrames / 60);
     p.vx = approach(p.vx, targetVx, accel * dt);
     p.vy = approach(p.vy, targetVy, accel * dt);
 
@@ -283,6 +307,27 @@ export const playerSystem = {
 
     ctx.restore();
 
+    // ---------- Shield bubble overlay ----------
+    if (p.modifiers.shield_bubble) {
+      ctx.save();
+      const radius = p.radius * 1.8 + Math.sin(p.breathPhase * 3) * 1.5;
+      ctx.strokeStyle = '#4af2ff';
+      ctx.shadowColor = '#4af2ff';
+      ctx.shadowBlur = 14;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.65 + 0.25 * Math.sin(p.breathPhase * 4);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      // Inner faint fill for that "containment" feel
+      ctx.globalAlpha = 0.06;
+      ctx.fillStyle = '#4af2ff';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     // ---------- Debug hitbox ----------
     if (gs.config.debug.showHitboxes) {
       ctx.save();
@@ -325,6 +370,10 @@ function fireWeapon(gs) {
   const proj = gs.data.weapons.projectiles[weapon.projectileType];
   if (!proj) return;
 
+  // Apply damage_up modifier
+  const baseDamage = weapon.damage ?? 1;
+  const effDamage = baseDamage * (p.modifiers.damage_up > 0 ? 2 : 1);
+
   const count = weapon.spawnCount ?? 1;
   const spread = weapon.spread ?? 0;
   const baseAngle = -Math.PI / 2; // upward
@@ -342,7 +391,7 @@ function fireWeapon(gs) {
       x: p.x,
       y: spawnY,
       vx, vy,
-      damage: weapon.damage ?? 1,
+      damage: effDamage,
       owner: 'player',
     });
   }

@@ -8,6 +8,7 @@
   "defaultWeapon": "basic",
 
   "weapons": {
+
     "basic": {
       "id": "basic",
       "name": "Default Discharge",
@@ -16,17 +17,35 @@
       "projectileType": "basic_shot",
       "spawnCount": 1,
       "spread": 0,
-      "damage": 1,
-      "_ranges": {
-        "fireRateMs":  [40, 1000],
-        "spawnCount":  [1, 16],
-        "spread":      [0, 1.57],
-        "damage":      [0.1, 100]
-      }
+      "damage": 1
+    },
+
+    "scatter": {
+      "id": "scatter",
+      "name": "Scatter Spread",
+      "description": "Many small pieces of you, leaving at once.",
+      "fireRateMs": 220,
+      "projectileType": "scatter_pellet",
+      "spawnCount": 5,
+      "spread": 0.7,
+      "damage": 1
+    },
+
+    "rapid": {
+      "id": "rapid",
+      "name": "Rapid Discharge",
+      "description": "The pressure has been building.",
+      "fireRateMs": 65,
+      "projectileType": "rapid_shot",
+      "spawnCount": 1,
+      "spread": 0,
+      "damage": 1
     }
+
   },
 
   "projectiles": {
+
     "basic_shot": {
       "id": "basic_shot",
       "owner": "player",
@@ -38,18 +57,53 @@
       "glowSize": 12,
       "trailColor": "toxicGreen",
       "trailLength": 4,
-      "lifetimeMs": 2500,
-      "_ranges": {
-        "size":        [1, 40],
-        "speed":       [50, 2000],
-        "glowSize":    [0, 60],
-        "trailLength": [0, 20],
-        "lifetimeMs":  [200, 10000]
-      },
-      "_enums": {
-        "owner": ["player", "enemy"],
-        "shape": ["pellet", "bullet", "laser", "plasma", "missile", "orb"]
-      }
+      "lifetimeMs": 2500
+    },
+
+    "scatter_pellet": {
+      "id": "scatter_pellet",
+      "owner": "player",
+      "shape": "pellet",
+      "size": 3,
+      "speed": 620,
+      "color": "#ffaa55",
+      "glowColor": "#ffaa55",
+      "glowSize": 8,
+      "trailColor": "#ffaa55",
+      "trailLength": 3,
+      "lifetimeMs": 1800
+    },
+
+    "rapid_shot": {
+      "id": "rapid_shot",
+      "owner": "player",
+      "shape": "bullet",
+      "size": 3,
+      "speed": 860,
+      "color": "#4a9eff",
+      "glowColor": "#4a9eff",
+      "glowSize": 10,
+      "trailColor": "#4a9eff",
+      "trailLength": 5,
+      "lifetimeMs": 2000
     }
+
+  },
+
+  "_ranges": {
+    "fireRateMs":  [40, 1000],
+    "spawnCount":  [1, 16],
+    "spread":      [0, 1.57],
+    "damage":      [0.1, 100],
+    "size":        [1, 40],
+    "speed":       [50, 2000],
+    "glowSize":    [0, 60],
+    "trailLength": [0, 20],
+    "lifetimeMs":  [200, 10000]
+  },
+
+  "_enums": {
+    "owner": ["player", "enemy"],
+    "shape": ["pellet", "bullet", "laser", "plasma", "missile", "orb"]
   }
 }

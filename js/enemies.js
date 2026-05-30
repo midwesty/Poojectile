@@ -354,9 +354,10 @@ function runCollisions(gs) {
 function killEnemy(gs, e) {
   const def = e.typeDef;
 
-  // Score
+  // Score (with difficulty + score_multiplier modifier)
   const diff = gs.config.difficulty[gs.difficulty] || gs.config.difficulty.normal;
-  const scoreGain = Math.round((def.scoreValue ?? 0) * (diff.scoreMultiplier ?? 1));
+  const scoreMulti = gs.player.modifiers.score_multiplier > 0 ? 2 : 1;
+  const scoreGain = Math.round((def.scoreValue ?? 0) * (diff.scoreMultiplier ?? 1) * scoreMulti);
   gs.player.score += scoreGain;
 
   // Audio — matches the deathEffect "weight"
@@ -370,10 +371,21 @@ function killEnemy(gs, e) {
   // Death effect
   spawnDeathEffect(gs, e);
 
+  // Drop table — roll each entry independently, take first success
+  const drops = def.dropTable || [];
+  for (const drop of drops) {
+    if (Math.random() < drop.chance) {
+      gs.powerups?.spawn({
+        typeId: drop.powerupId,
+        x: e.x,
+        y: e.y,
+      });
+      break;
+    }
+  }
+
   // Free the slot
   gs.enemies.pool.release(e);
-
-  // (Future: drop table lookup + powerup spawn goes here in Step 6)
 }
 
 function spawnDeathEffect(gs, e) {
@@ -455,6 +467,23 @@ function spawnDeathEffect(gs, e) {
 function damagePlayer(gs, amount, fromX, fromY) {
   const p = gs.player;
   const palette = gs.config.palette;
+
+  // Shield bubble absorbs one hit, no HP loss
+  if (p.modifiers.shield_bubble) {
+    p.modifiers.shield_bubble = false;
+    p.iFrames = gs.config.player.invincibilityFramesOnRespawn / 60;
+    gs.audio?.play('shieldBreak');
+    gs.particles.burst({
+      x: p.x, y: p.y,
+      count: 22,
+      speedMin: 120, speedMax: 320,
+      lifetime: 0.6,
+      size: 2.5,
+      color: '#4af2ff',
+      glow: 16,
+    });
+    return;
+  }
 
   p.hp -= amount;
   p.iFrames = gs.config.player.invincibilityFramesOnRespawn / 60;

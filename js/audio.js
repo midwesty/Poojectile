@@ -194,6 +194,53 @@ const SFX = {
     });
   },
 
+  // ---------- Power-up pickup (bright ascending chime) ----------
+  pickup(ctx, dest) {
+    const t = ctx.currentTime;
+    // Ascending triad with sparkle
+    const notes = [659, 988, 1319];  // E5, B5, E6
+    notes.forEach((f, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      const start = t + i * 0.04;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.18, start);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+      osc.connect(g).connect(dest);
+      osc.start(start);
+      osc.stop(start + 0.2);
+    });
+  },
+
+  // ---------- Shield absorbs a hit (crystalline shatter) ----------
+  shieldBreak(ctx, dest) {
+    const t = ctx.currentTime;
+    // High noise burst
+    const noise = makeNoiseSource(ctx, 0.22);
+    const nf = ctx.createBiquadFilter();
+    nf.type = 'highpass';
+    nf.frequency.value = 3000;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.3, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    noise.connect(nf).connect(ng).connect(dest);
+    noise.start(t);
+    noise.stop(t + 0.22);
+
+    // Descending sine "ringoff"
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1200, t);
+    osc.frequency.exponentialRampToValueAtTime(380, t + 0.28);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.18, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+    osc.connect(g).connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.3);
+  },
+
   // ---------- Menu navigate (cursor moves) ----------
   menuNav(ctx, dest) {
     const t = ctx.currentTime;

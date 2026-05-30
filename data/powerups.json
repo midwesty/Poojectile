@@ -1,0 +1,120 @@
+{
+  "_meta": {
+    "schema_version": 1,
+    "description": "Power-up definitions. Three types: 'weapon' swaps the current weapon (references weapons.json), 'modifier' applies a timed stat boost or one-shot effect, 'passive' fires an immediate effect and is gone. Color/glowColor accept palette keys or hex.",
+    "last_updated": "2026-05-29"
+  },
+
+  "powerups": {
+
+    "weapon_scatter": {
+      "id": "weapon_scatter",
+      "displayName": "Scatter Shot",
+      "description": "Many small pieces of you, leaving at once.",
+      "type": "weapon",
+      "weaponId": "scatter",
+      "color": "#ffaa55",
+      "glowColor": "#ffaa55",
+      "icon": "S",
+      "size": 14,
+      "rarity": "common"
+    },
+
+    "weapon_rapid": {
+      "id": "weapon_rapid",
+      "displayName": "Rapid Fire",
+      "description": "Hostility, condensed and accelerated.",
+      "type": "weapon",
+      "weaponId": "rapid",
+      "color": "#4a9eff",
+      "glowColor": "#4a9eff",
+      "icon": "R",
+      "size": 14,
+      "rarity": "common"
+    },
+
+    "shield_bubble": {
+      "id": "shield_bubble",
+      "displayName": "Shield Bubble",
+      "description": "A polite suggestion that you not die just yet.",
+      "type": "modifier",
+      "modifier": "shield_bubble",
+      "duration": null,
+      "color": "#4af2ff",
+      "glowColor": "#4af2ff",
+      "icon": "O",
+      "size": 14,
+      "rarity": "uncommon"
+    },
+
+    "speed_boost": {
+      "id": "speed_boost",
+      "displayName": "Speed Boost",
+      "description": "Your rage approaches mach.",
+      "type": "modifier",
+      "modifier": "speed_boost",
+      "duration": 8,
+      "color": "#ffe44a",
+      "glowColor": "#ffe44a",
+      "icon": ">",
+      "size": 14,
+      "rarity": "common"
+    },
+
+    "damage_up": {
+      "id": "damage_up",
+      "displayName": "Concentrated Hate",
+      "description": "You focus. The hate multiplies.",
+      "type": "modifier",
+      "modifier": "damage_up",
+      "duration": 10,
+      "color": "#ff3b3b",
+      "glowColor": "#ff3b3b",
+      "icon": "X",
+      "size": 14,
+      "rarity": "common"
+    },
+
+    "health_small": {
+      "id": "health_small",
+      "displayName": "Repair",
+      "description": "Plus one HP. You feel slightly less compromised.",
+      "type": "passive",
+      "effect": "heal",
+      "amount": 1,
+      "color": "#7fff5c",
+      "glowColor": "#7fff5c",
+      "icon": "+",
+      "size": 14,
+      "rarity": "common"
+    },
+
+    "score_multiplier": {
+      "id": "score_multiplier",
+      "displayName": "Score Multiplier",
+      "description": "Numbers go up faster. You like this.",
+      "type": "modifier",
+      "modifier": "score_multiplier",
+      "duration": 15,
+      "color": "#ff6ad8",
+      "glowColor": "#ff6ad8",
+      "icon": "2",
+      "size": 14,
+      "rarity": "uncommon"
+    }
+
+  },
+
+  "_ranges": {
+    "duration": [1, 60],
+    "amount":   [1, 999],
+    "size":     [4, 40]
+  },
+
+  "_enums": {
+    "type":     ["weapon", "modifier", "passive"],
+    "modifier": ["shield_bubble", "speed_boost", "damage_up", "score_multiplier"],
+    "effect":   ["heal", "extra_life", "shield_recharge"],
+    "rarity":   ["common", "uncommon", "rare", "legendary"]
+  }
+}

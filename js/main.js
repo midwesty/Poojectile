@@ -26,14 +26,16 @@ import { projectilesSystem } from './projectiles.js';
 import { particlesSystem } from './particles.js';
 import { playerSystem } from './player.js';
 import { enemiesSystem } from './enemies.js';
+import { powerupsSystem } from './powerups.js';
 
 const CONFIG_PATH = new URL('../data/config.json', import.meta.url).href;
 
 // Data files to load in parallel at boot. Add new entries here
-// as schema files arrive (powerups.json, levels.json, etc.).
+// as schema files arrive (bosses.json, levels.json, etc.).
 const DATA_FILES = {
-  weapons: new URL('../data/weapons.json', import.meta.url).href,
-  enemies: new URL('../data/enemies.json', import.meta.url).href,
+  weapons:  new URL('../data/weapons.json',  import.meta.url).href,
+  enemies:  new URL('../data/enemies.json',  import.meta.url).href,
+  powerups: new URL('../data/powerups.json', import.meta.url).href,
 };
 
 const DEFAULT_OPTS = {
@@ -155,6 +157,7 @@ export async function openPoojectile(spacedState = null, spacedData = null, spac
   // Gameplay systems
   registerSystem(engine, projectilesSystem);
   registerSystem(engine, particlesSystem);
+  registerSystem(engine, powerupsSystem);
   registerSystem(engine, playerSystem);
   registerSystem(engine, enemiesSystem);
 

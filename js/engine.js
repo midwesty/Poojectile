@@ -579,6 +579,34 @@ const playingSystem = {
     ctx.fillStyle = palette.authorityBlue;
     ctx.fillText(`BOMB \u00D7 ${p.bombs}`, fieldW - 12, fieldH - 10);
 
+    // ---- Active modifier icons (bottom-left strip, above the weapon line) ----
+    if (p.modifiers) {
+      const mods = p.modifiers;
+      const iconY = fieldH - 36;
+      let iconX = 12;
+      const drawMod = (icon, color, secondsLeft) => {
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = color;
+        ctx.font = 'bold 20px VT323, monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(icon, iconX, iconY);
+        if (secondsLeft !== null) {
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = palette.bone;
+          ctx.font = '14px VT323, monospace';
+          ctx.fillText(`${secondsLeft.toFixed(1)}s`, iconX + 16, iconY);
+        }
+        ctx.shadowBlur = 0;
+        iconX += 70;
+      };
+      if (mods.shield_bubble)         drawMod('O', '#4af2ff', null);
+      if (mods.speed_boost > 0)       drawMod('>', '#ffe44a', mods.speed_boost);
+      if (mods.damage_up > 0)         drawMod('X', '#ff3b3b', mods.damage_up);
+      if (mods.score_multiplier > 0)  drawMod('2', '#ff6ad8', mods.score_multiplier);
+    }
+
     ctx.restore();
 
     // Pause overlay
