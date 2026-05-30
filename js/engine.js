@@ -507,14 +507,12 @@ const gameOverSystem = {
 };
 
 // ----- Playing System -----
-// Game director for the playing/paused phases. Handles:
-//   - ESC toggles pause
-//   - Renders minimal in-game status (just enough until hud.js exists)
-// When levels.js + hud.js arrive in later steps they'll layer on
-// top of this; this system stays as the lightweight coordinator.
+// Game director for the playing/paused phases. Handles ESC-to-pause
+// and starts/stops the level music. HUD rendering and pause overlay
+// live in hud.js.
 const playingSystem = {
   id: 'playing',
-  priority: 200,        // renders LAST so status text sits on top
+  priority: 199,        // runs just before HUD (200) for clean update ordering
   phases: [PHASES.PLAYING, PHASES.PAUSED],
 
   onEnterPhase(gs, fromPhase, toPhase) {
@@ -539,93 +537,6 @@ const playingSystem = {
         gs.engine,
         gs.phase === PHASES.PLAYING ? PHASES.PAUSED : PHASES.PLAYING
       );
-    }
-  },
-  render(gs, dt) {
-    const { ctx, fieldW, fieldH } = gs;
-    const palette = gs.config.palette;
-    const p = gs.player;
-    if (!p) return;
-
-    // Minimal HUD strip: lives | weapon | score | bombs
-    ctx.save();
-    ctx.font = '18px VT323, monospace';
-    ctx.textBaseline = 'top';
-
-    // Top-left: lives
-    ctx.textAlign = 'left';
-    ctx.fillStyle = palette.bloodRed;
-    ctx.shadowColor = palette.bloodRed;
-    ctx.shadowBlur = 6;
-    ctx.fillText(`LIVES ${p.lives}`, 12, 10);
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = palette.bone;
-    ctx.fillText(`HP ${'\u2588'.repeat(p.hp)}${'\u2591'.repeat(p.maxHp - p.hp)}`, 12, 30);
-
-    // Top-right: score (positioned below the close-X button at ~48px high)
-    ctx.textAlign = 'right';
-    ctx.fillStyle = palette.bone;
-    ctx.fillText(`SCORE  ${p.score.toString().padStart(6, '0')}`, fieldW - 12, 56);
-
-    // Bottom-left: weapon
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'bottom';
-    ctx.fillStyle = palette.toxicGreen;
-    const weapon = gs.data?.weapons?.weapons?.[p.weaponId];
-    ctx.fillText(`WPN ${weapon?.name ?? p.weaponId}`, 12, fieldH - 10);
-
-    // Bottom-right: bombs
-    ctx.textAlign = 'right';
-    ctx.fillStyle = palette.authorityBlue;
-    ctx.fillText(`BOMB \u00D7 ${p.bombs}`, fieldW - 12, fieldH - 10);
-
-    // ---- Active modifier icons (bottom-left strip, above the weapon line) ----
-    if (p.modifiers) {
-      const mods = p.modifiers;
-      const iconY = fieldH - 36;
-      let iconX = 12;
-      const drawMod = (icon, color, secondsLeft) => {
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 8;
-        ctx.fillStyle = color;
-        ctx.font = 'bold 20px VT323, monospace';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'alphabetic';
-        ctx.fillText(icon, iconX, iconY);
-        if (secondsLeft !== null) {
-          ctx.shadowBlur = 0;
-          ctx.fillStyle = palette.bone;
-          ctx.font = '14px VT323, monospace';
-          ctx.fillText(`${secondsLeft.toFixed(1)}s`, iconX + 16, iconY);
-        }
-        ctx.shadowBlur = 0;
-        iconX += 70;
-      };
-      if (mods.shield_bubble)         drawMod('O', '#4af2ff', null);
-      if (mods.speed_boost > 0)       drawMod('>', '#ffe44a', mods.speed_boost);
-      if (mods.damage_up > 0)         drawMod('X', '#ff3b3b', mods.damage_up);
-      if (mods.score_multiplier > 0)  drawMod('2', '#ff6ad8', mods.score_multiplier);
-    }
-
-    ctx.restore();
-
-    // Pause overlay
-    if (gs.phase === PHASES.PAUSED) {
-      ctx.save();
-      ctx.fillStyle = 'rgba(2, 1, 3, 0.7)';
-      ctx.fillRect(0, 0, fieldW, fieldH);
-      ctx.fillStyle = palette.toxicGreen;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.shadowColor = palette.toxicGreen;
-      ctx.shadowBlur = 24;
-      ctx.font = 'bold 56px VT323, monospace';
-      ctx.fillText('PAUSED', fieldW / 2, fieldH * 0.45);
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = palette.boneDim;
-      ctx.font = '20px VT323, monospace';
-      ctx.fillText('ESC to resume', fieldW / 2, fieldH * 0.55);
-      ctx.restore();
     }
   },
 };

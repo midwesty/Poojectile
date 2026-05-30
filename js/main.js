@@ -27,6 +27,7 @@ import { particlesSystem } from './particles.js';
 import { playerSystem } from './player.js';
 import { enemiesSystem } from './enemies.js';
 import { powerupsSystem } from './powerups.js';
+import { hudSystem } from './hud.js';
 
 const CONFIG_PATH = new URL('../data/config.json', import.meta.url).href;
 
@@ -160,6 +161,9 @@ export async function openPoojectile(spacedState = null, spacedData = null, spac
   registerSystem(engine, powerupsSystem);
   registerSystem(engine, playerSystem);
   registerSystem(engine, enemiesSystem);
+
+  // HUD (renders on top of everything during gameplay)
+  registerSystem(engine, hudSystem);
 
   // Menu phase
   registerSystem(engine, menuSystem);
