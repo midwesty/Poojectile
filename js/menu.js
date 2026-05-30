@@ -76,14 +76,17 @@ export const menuSystem = {
     if (input.actionJustPressed('moveUp')) {
       m.cursor = (m.cursor - 1 + MENU_ITEMS.length) % MENU_ITEMS.length;
       m.lastInputWasPointer = false;
+      gs.audio?.play('menuNav');
     }
     if (input.actionJustPressed('moveDown')) {
       m.cursor = (m.cursor + 1) % MENU_ITEMS.length;
       m.lastInputWasPointer = false;
+      gs.audio?.play('menuNav');
     }
 
     // Select with Space/Enter/'fire' action
     if (input.actionJustPressed('fire') || input.justPressed('Enter')) {
+      gs.audio?.play('menuSelect');
       activate(gs, m.cursor);
     }
 
@@ -105,6 +108,7 @@ export const menuSystem = {
 
     if (newHover !== -1 && input.pointer.justDown) {
       m.cursor = newHover;
+      gs.audio?.play('menuSelect');
       activate(gs, newHover);
       m.lastInputWasPointer = true;
     } else if (newHover !== -1 && newHover !== m.cursor) {

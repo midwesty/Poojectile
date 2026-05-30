@@ -241,6 +241,7 @@ export function registerBuiltinSystems(engine) {
   registerSystem(engine, bootSystem);
   registerSystem(engine, pregameSystem);
   registerSystem(engine, playingSystem);
+  registerSystem(engine, gameOverSystem);
 }
 
 // ----- Background System -----
@@ -438,6 +439,73 @@ const pregameSystem = {
   },
 };
 
+// ----- Game Over System -----
+// Shows final score and a "press anything to continue" prompt
+// after a brief delay so players can't accidentally skip it.
+const GAME_OVER_INPUT_DELAY = 1.2;
+
+const gameOverSystem = {
+  id: 'gameOver',
+  priority: 200,
+  phases: [PHASES.GAME_OVER],
+  onEnterPhase(gs) {
+    gs.audio?.play('gameOver');
+  },
+  update(gs, dt) {
+    if (gs.phaseElapsed < GAME_OVER_INPUT_DELAY) return;
+    const skip =
+      gs.input.actionJustPressed('pause') ||
+      gs.input.justPressed('Space') ||
+      gs.input.justPressed('Enter') ||
+      gs.input.pointer.justDown;
+    if (skip) transitionTo(gs.engine, PHASES.MENU);
+  },
+  render(gs, dt) {
+    const { ctx, fieldW, fieldH } = gs;
+    const palette = gs.config.palette;
+    const p = gs.player;
+
+    // Heavy vignette over the still-visible background
+    ctx.save();
+    ctx.fillStyle = 'rgba(2, 1, 3, 0.78)';
+    ctx.fillRect(0, 0, fieldW, fieldH);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // GAME OVER — pulsing red
+    const pulse = 1 + 0.05 * Math.sin(gs.elapsed * 4);
+    ctx.shadowColor = palette.bloodRed;
+    ctx.shadowBlur = 30 * pulse;
+    ctx.fillStyle = palette.bloodRed;
+    ctx.font = `bold ${Math.round(72 * pulse)}px VT323, monospace`;
+    ctx.fillText('GAME OVER', fieldW / 2, fieldH * 0.36);
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = palette.bone;
+    ctx.font = '20px VT323, monospace';
+    ctx.fillText('You were recycled.', fieldW / 2, fieldH * 0.44);
+
+    // Final score
+    if (p) {
+      ctx.fillStyle = palette.toxicGreen;
+      ctx.font = '28px VT323, monospace';
+      ctx.fillText(`FINAL SCORE  ${p.score.toString().padStart(6, '0')}`, fieldW / 2, fieldH * 0.55);
+    }
+
+    // Press-to-continue hint, gated by input delay
+    if (gs.phaseElapsed >= GAME_OVER_INPUT_DELAY) {
+      const alpha = 0.5 + 0.5 * Math.sin(gs.elapsed * 3);
+      ctx.fillStyle = palette.boneDim;
+      ctx.globalAlpha = alpha;
+      ctx.font = '18px VT323, monospace';
+      ctx.fillText('[ PRESS ANYTHING TO CONTINUE ]', fieldW / 2, fieldH * 0.72);
+    }
+
+    ctx.restore();
+  },
+};
+
 // ----- Playing System -----
 // Game director for the playing/paused phases. Handles:
 //   - ESC toggles pause
@@ -448,8 +516,25 @@ const playingSystem = {
   id: 'playing',
   priority: 200,        // renders LAST so status text sits on top
   phases: [PHASES.PLAYING, PHASES.PAUSED],
+
+  onEnterPhase(gs, fromPhase, toPhase) {
+    // Newly entering playing/paused from outside (typically from PREGAME).
+    // PAUSED <-> PLAYING transitions don't fire this — both phases are
+    // already in this system's phase list.
+    if (gs.audio) {
+      if (fromPhase === PHASES.PREGAME) gs.audio.play('levelStart');
+      gs.audio.music.play('level1');
+    }
+  },
+
+  onExitPhase(gs, fromPhase, toPhase) {
+    // Leaving the playing/paused band (e.g. → GAME_OVER, → MENU)
+    if (gs.audio) gs.audio.music.stop();
+  },
+
   update(gs, dt) {
     if (gs.input.actionJustPressed('pause')) {
+      gs.audio?.play('pauseToggle');
       transitionTo(
         gs.engine,
         gs.phase === PHASES.PLAYING ? PHASES.PAUSED : PHASES.PLAYING
@@ -477,10 +562,10 @@ const playingSystem = {
     ctx.fillStyle = palette.bone;
     ctx.fillText(`HP ${'\u2588'.repeat(p.hp)}${'\u2591'.repeat(p.maxHp - p.hp)}`, 12, 30);
 
-    // Top-right: score
+    // Top-right: score (positioned below the close-X button at ~48px high)
     ctx.textAlign = 'right';
     ctx.fillStyle = palette.bone;
-    ctx.fillText(`SCORE  ${p.score.toString().padStart(6, '0')}`, fieldW - 12, 10);
+    ctx.fillText(`SCORE  ${p.score.toString().padStart(6, '0')}`, fieldW - 12, 56);
 
     // Bottom-left: weapon
     ctx.textAlign = 'left';

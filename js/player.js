@@ -72,18 +72,27 @@ export const playerSystem = {
   },
 
   onEnterPhase(gs, fromPhase, toPhase) {
-    if (toPhase !== PHASES.PLAYING && toPhase !== PHASES.BOSS_FIGHT) return;
-    // Coming into playing fresh: respawn at start point with i-frames
     const p = gs.player;
     const pcfg = gs.config.player;
-    if (fromPhase === PHASES.PREGAME) {
+
+    // PREGAME entry = full reset. This is the canonical "new run starts" hook.
+    if (toPhase === PHASES.PREGAME) {
+      p.hp = p.maxHp;
+      p.lives = getDifficultyStartingLives(gs);
+      p.score = 0;
+      p.bombs = 2;
       p.x = gs.fieldW * pcfg.startingX;
       p.y = gs.fieldH * pcfg.startingY;
       p.vx = 0; p.vy = 0;
-      p.iFrames = pcfg.invincibilityFramesOnRespawn / 60;
+      p.iFrames = 0;
       p.fireCooldown = 0;
-      // Clear trail
       for (let i = 0; i < p.trail.length; i++) p.trail[i] = null;
+      return;
+    }
+
+    // Entering PLAYING from PREGAME = grant brief i-frames as a grace period
+    if (toPhase === PHASES.PLAYING && fromPhase === PHASES.PREGAME) {
+      p.iFrames = pcfg.invincibilityFramesOnRespawn / 60;
     }
   },
 
@@ -339,6 +348,7 @@ function fireWeapon(gs) {
   }
 
   p.fireCooldown = (weapon.fireRateMs ?? 140) / 1000;
+  gs.audio?.play('fire');
 }
 
 // ============================================================

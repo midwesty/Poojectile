@@ -20,16 +20,20 @@ import {
   PHASES,
 } from './engine.js';
 import { inputSystem } from './input.js';
+import { audioSystem } from './audio.js';
 import { menuSystem } from './menu.js';
 import { projectilesSystem } from './projectiles.js';
+import { particlesSystem } from './particles.js';
 import { playerSystem } from './player.js';
+import { enemiesSystem } from './enemies.js';
 
 const CONFIG_PATH = new URL('../data/config.json', import.meta.url).href;
 
 // Data files to load in parallel at boot. Add new entries here
-// as schema files arrive (enemies.json, levels.json, etc.).
+// as schema files arrive (powerups.json, levels.json, etc.).
 const DATA_FILES = {
   weapons: new URL('../data/weapons.json', import.meta.url).href,
+  enemies: new URL('../data/enemies.json', import.meta.url).href,
 };
 
 const DEFAULT_OPTS = {
@@ -142,12 +146,17 @@ export async function openPoojectile(spacedState = null, spacedData = null, spac
   // Input first (lowest priority — runs before everything else)
   registerSystem(engine, inputSystem);
 
-  // Built-in phase systems (background, boot, pregame, playing-coordinator)
+  // Audio next (priority 5) — must exist before other systems try to play
+  registerSystem(engine, audioSystem);
+
+  // Built-in phase systems (background, boot, pregame, playing-coordinator, game-over)
   registerBuiltinSystems(engine);
 
   // Gameplay systems
   registerSystem(engine, projectilesSystem);
+  registerSystem(engine, particlesSystem);
   registerSystem(engine, playerSystem);
+  registerSystem(engine, enemiesSystem);
 
   // Menu phase
   registerSystem(engine, menuSystem);

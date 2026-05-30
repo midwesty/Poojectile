@@ -1,0 +1,91 @@
+{
+  "_meta": {
+    "schema_version": 1,
+    "description": "Enemy type definitions. Each enemy has movement, shooting, drop table, scoring, visual, and death effect data. dropTable entries reference powerups.json (not yet wired). projectileType references weapons.json.projectiles. Adding a new enemy = new entry under 'enemies' with all required fields.",
+    "last_updated": "2026-05-29"
+  },
+
+  "enemies": {
+
+    "asteroid_small": {
+      "id": "asteroid_small",
+      "displayName": "Stone Pebble",
+      "hp": 1,
+      "speed": 90,
+      "size": 14,
+      "movePattern": "straight",
+      "shootPattern": "none",
+      "shootInterval": 0,
+      "projectileType": null,
+      "dropTable": [],
+      "scoreValue": 50,
+      "color": "#8b7355",
+      "accentColor": "#3d2e1f",
+      "deathEffect": "small_pop",
+      "special": null,
+      "contactDamage": 1
+    },
+
+    "asteroid_medium": {
+      "id": "asteroid_medium",
+      "displayName": "Stone Drift",
+      "hp": 3,
+      "speed": 65,
+      "size": 24,
+      "movePattern": "sine_wave",
+      "shootPattern": "none",
+      "shootInterval": 0,
+      "projectileType": null,
+      "dropTable": [],
+      "scoreValue": 150,
+      "color": "#7a6249",
+      "accentColor": "#2e2114",
+      "deathEffect": "medium_explosion",
+      "special": null,
+      "contactDamage": 1
+    },
+
+    "debris_chunk": {
+      "id": "debris_chunk",
+      "displayName": "Hull Fragment",
+      "hp": 2,
+      "speed": 110,
+      "size": 18,
+      "movePattern": "random_drift",
+      "shootPattern": "none",
+      "shootInterval": 0,
+      "projectileType": null,
+      "dropTable": [],
+      "scoreValue": 100,
+      "color": "#6a6058",
+      "accentColor": "#2a2520",
+      "deathEffect": "small_pop",
+      "special": null,
+      "contactDamage": 1
+    }
+
+  },
+
+  "_ranges": {
+    "hp":             [1, 999],
+    "speed":          [10, 600],
+    "size":           [4, 80],
+    "shootInterval":  [100, 10000],
+    "scoreValue":     [1, 100000],
+    "contactDamage":  [0, 10]
+  },
+
+  "_enums": {
+    "movePattern": [
+      "straight", "sine_wave", "homing", "formation",
+      "flanking", "random_drift", "stationary_turret"
+    ],
+    "shootPattern": [
+      "none", "aimed", "spread", "burst", "spiral", "predictive"
+    ],
+    "deathEffect": [
+      "small_pop", "medium_explosion", "large_explosion",
+      "split", "chain_reaction"
+    ]
+  }
+}

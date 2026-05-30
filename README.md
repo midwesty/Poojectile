@@ -8,18 +8,17 @@ Part of the [BOPware](https://github.com/midwesty/Spaced) ecosystem. Designed to
 
 ## Status
 
-**Phase 1 — Step 3: Player + Projectiles.** The player is alive on the canvas. You can move (keyboard or touch drag) and auto-fire at nothing.
+**Phase 1 — Step 4: Enemies + Particles + Collision.** It's a game now. Enemies spawn from the top of the screen, you shoot them, they explode in satisfying particle bursts. You take damage from contact, lose lives, and hit game over when you're out.
 
 Running this right now will:
-- Show the lobby (`index.html`) with title screen and difficulty selector
-- "Start Game" opens the overlay → boot (1.5s) → menu
-- Select START GAME from the in-canvas menu → "GET READY" countdown (1.8s, skip with space/tap)
-- **Playing phase:** organic blob player appears, can move freely, auto-fires toxic-green projectiles upward
-- **Desktop:** WASD or arrow keys to move. Auto-fire while moving (or hold Space/Z to fire while stationary)
-- **Mobile:** drag anywhere on the playfield to move (player floats above your finger). Fire is automatic while touching.
-- **ESC:** toggles pause (frozen overlay), press again to resume
-- Minimal HUD shows lives, HP, score, current weapon, bomb count
-- Boundary clamping keeps the player inside the playfield
+- Same lobby → boot → menu → GET READY flow as before
+- **In the playing phase:** three enemy types spawn from above every ~1.1 seconds (small asteroids drifting straight down, medium asteroids weaving in sine waves, hull debris with random drift)
+- Your projectiles damage and destroy enemies on hit (white hit flash + spark particles)
+- Killed enemies explode with type-specific particle bursts (small_pop / medium_explosion) and award score
+- Contact with an enemy damages you (`contactDamage` from enemies.json), grants i-frames, blinks your sprite, and destroys the asteroid that hit you
+- Losing all HP costs a life; running out of lives → GAME OVER screen with final score
+- GAME OVER screen waits 1.2s for input then returns to menu on space/tap/ESC
+- Difficulty scales enemy HP, speed, and score multiplier per `config.json`
 
 ---
 
@@ -52,11 +51,11 @@ Poojectile/
 │   ├── menu.js             [DONE] In-canvas menu phase system
 │   ├── utils.js            [DONE] Math, collision, object pool helpers
 │   ├── projectiles.js      [DONE] Pooled projectile system (300 slots)
+│   ├── particles.js        [DONE] Pooled particle system (500 slots, additive blend)
 │   ├── player.js           [DONE] Player movement, weapons, organic blob rendering
-│   ├── enemies.js          [TODO] Enemy types, AI patterns, spawning, bosses
+│   ├── enemies.js          [DONE] Enemy pool, AI patterns, collision, test spawner
 │   ├── powerups.js         [TODO] Power-up types, collection, effects, timers
 │   ├── levels.js           [TODO] Level loader, procedural generation, scrolling
-│   ├── particles.js        [TODO] Particle system (explosions, trails, effects)
 │   ├── renderer.js         [TODO] Level background renderer (parallax, debris)
 │   ├── hud.js              [TODO] Full HUD (will replace the placeholder in engine.js)
 │   ├── audio.js            [TODO] Web Audio synthesis (SFX + chiptune music)
@@ -64,8 +63,8 @@ Poojectile/
 ├── data/
 │   ├── config.json         [DONE] Global config
 │   ├── weapons.json        [DONE] Weapon + projectile type definitions
+│   ├── enemies.json        [DONE] Enemy type definitions (Level 1 asteroids/debris)
 │   ├── levels.json         [TODO] All level definitions
-│   ├── enemies.json        [TODO] Enemy type definitions
 │   ├── powerups.json       [TODO] Power-up type definitions
 │   ├── bosses.json         [TODO] Boss definitions
 │   └── cutscenes.json      [TODO] Cutscene scripts and dialogue
@@ -128,16 +127,15 @@ These are locked in for the project:
 1. ✅ Skeleton + boot
 2. ✅ Engine core (loop, state machine, phase routing, system registration)
 3. ✅ Player + projectiles + drag-to-move + basic shot
-4. Enemy framework + Level 1 enemy types + collision
-5. Particle system (explosions, hit flash, trails)
-6. Audio engine + Level 1 chiptune track
-7. Power-ups (4–5 working types covering all categories)
-8. Full HUD (replaces the engine.js placeholder)
-9. Boss 1
-10. Level loader + Level 1 waves + scrolling background
-11. Cutscene player + intro + pre-Level 1
-12. Menus expansion (settings, game-over, level-complete)
-13. Mobile polish (screen shake, hit flash, i-frames juice)
+4. ✅ Enemies + particles + collision + game over
+5. Audio engine + Level 1 chiptune track + SFX wiring
+6. Power-ups (4–5 working types covering all categories)
+7. Full HUD (replaces the engine.js placeholder)
+8. Boss 1
+9. Level loader + Level 1 waves + scrolling background
+10. Cutscene player + intro + pre-Level 1
+11. Menus expansion (settings, game-over polish, level-complete)
+12. Mobile polish (screen shake, hit flash refinement, juice)
 
 **Phase 2 — Content Expansion.** Levels 2–6 with their bosses, enemies, cutscenes, and music. Almost no engine code, mostly data.
 
