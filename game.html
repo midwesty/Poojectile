@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#050306">
+<title>POOJECTILE \u2014 Direct Launch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<!--
+  Direct-launch page. Skips the lobby and opens Poojectile immediately.
+  Use this for SPACED integration testing or arcade-cabinet kiosk mode.
+  Optional query params:
+    ?difficulty=easy|normal|hard
+    ?level=1..6
+-->
+<script type="module">
+import { openPoojectile } from './js/main.js';
+
+const params = new URLSearchParams(window.location.search);
+const opts = {};
+if (params.has('difficulty')) opts.difficulty = params.get('difficulty');
+if (params.has('level')) opts.startLevel = parseInt(params.get('level'), 10) || 1;
+
+opts.onClose = () => {
+  // When the game closes from direct-launch, return to the lobby
+  window.location.href = './index.html';
+};
+
+openPoojectile(null, null, null, opts).catch(err => {
+  console.error(err);
+  document.body.innerHTML = `
+    <div style="color: #f0e8d8; font-family: VT323, monospace; padding: 40px; text-align: center;">
+      <h1 style="color: #ff3b3b;">BOOT FAILURE</h1>
+      <p>${err.message}</p>
+      <p style="opacity: 0.6; margin-top: 20px;">If you opened this file directly, run a local server:<br>
+      <code>python -m http.server 8000</code></p>
+      <p style="margin-top: 30px;"><a href="./index.html" style="color: #7fff5c;">[ Return to lobby ]</a></p>
+    </div>
+  `;
+});
+</script>
+</body>
+</html>

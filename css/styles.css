@@ -1,0 +1,491 @@
+/* ============================================================
+   POOJECTILE — STYLES
+   Aesthetic: derelict arcade terminal, bioluminescent decay,
+   CRT scanlines, organic drip. Dark palette with toxic green
+   accents. Avoid clean lines where atmosphere would do.
+   ============================================================ */
+
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --pj-void:           #050306;
+  --pj-void-deep:      #020103;
+  --pj-bone:           #f0e8d8;
+  --pj-bone-dim:       #a89e88;
+  --pj-toxic:          #7fff5c;
+  --pj-toxic-dark:     #3a7d2a;
+  --pj-blood:          #ff3b3b;
+  --pj-authority:      #4a9eff;
+  --pj-bruise:         #2a1a3a;
+  --pj-rust:           #d97742;
+
+  --pj-glow-toxic:     0 0 10px rgba(127, 255, 92, 0.6),
+                       0 0 30px rgba(127, 255, 92, 0.25);
+  --pj-glow-blood:     0 0 10px rgba(255, 59, 59, 0.6),
+                       0 0 30px rgba(255, 59, 59, 0.25);
+
+  --pj-font-display:   'VT323', 'Courier New', monospace;
+  --pj-font-body:      'VT323', 'Courier New', monospace;
+}
+
+html, body {
+  height: 100%;
+  background: var(--pj-void);
+  color: var(--pj-bone);
+  font-family: var(--pj-font-body);
+  font-size: 22px;
+  line-height: 1.3;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ============================================================
+   LOBBY (index.html)
+   ============================================================ */
+
+.pj-lobby {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(127, 255, 92, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(74, 158, 255, 0.03) 0%, transparent 50%),
+    var(--pj-void);
+}
+
+/* Animated starfield via CSS — replaced by canvas in game */
+.pj-lobby::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(240, 232, 216, 0.8), transparent),
+    radial-gradient(1px 1px at 60% 70%, rgba(240, 232, 216, 0.6), transparent),
+    radial-gradient(1px 1px at 80% 20%, rgba(240, 232, 216, 0.5), transparent),
+    radial-gradient(1px 1px at 40% 80%, rgba(240, 232, 216, 0.7), transparent),
+    radial-gradient(1px 1px at 90% 50%, rgba(127, 255, 92, 0.4), transparent),
+    radial-gradient(1px 1px at 10% 60%, rgba(74, 158, 255, 0.4), transparent),
+    radial-gradient(2px 2px at 75% 40%, rgba(240, 232, 216, 0.3), transparent);
+  background-size: 400px 400px, 300px 300px, 500px 500px, 350px 350px, 600px 600px, 450px 450px, 700px 700px;
+  animation: pj-drift 120s linear infinite;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+@keyframes pj-drift {
+  0%   { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; }
+  100% { background-position: 400px 200px, -300px 150px, 250px -200px, -350px 100px, 600px -300px, -450px 250px, 700px -150px; }
+}
+
+/* CRT scanline overlay */
+.pj-lobby::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.15) 2px,
+    rgba(0, 0, 0, 0.15) 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+.pj-lobby-inner {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 540px;
+  width: 100%;
+}
+
+/* Title — large, dripping, alive */
+.pj-title {
+  font-family: var(--pj-font-display);
+  font-size: clamp(64px, 18vw, 140px);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--pj-toxic);
+  text-shadow:
+    0 0 10px rgba(127, 255, 92, 0.7),
+    0 0 30px rgba(127, 255, 92, 0.4),
+    0 0 60px rgba(127, 255, 92, 0.2),
+    2px 2px 0 var(--pj-bruise);
+  margin-bottom: 4px;
+  line-height: 0.9;
+  animation: pj-title-pulse 4s ease-in-out infinite;
+  position: relative;
+}
+
+@keyframes pj-title-pulse {
+  0%, 100% {
+    text-shadow:
+      0 0 10px rgba(127, 255, 92, 0.7),
+      0 0 30px rgba(127, 255, 92, 0.4),
+      0 0 60px rgba(127, 255, 92, 0.2),
+      2px 2px 0 var(--pj-bruise);
+  }
+  50% {
+    text-shadow:
+      0 0 15px rgba(127, 255, 92, 0.9),
+      0 0 45px rgba(127, 255, 92, 0.55),
+      0 0 90px rgba(127, 255, 92, 0.3),
+      2px 2px 0 var(--pj-bruise);
+  }
+}
+
+/* Tagline */
+.pj-tagline {
+  font-size: clamp(16px, 3.5vw, 22px);
+  color: var(--pj-bone-dim);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 48px;
+  opacity: 0.8;
+}
+
+.pj-tagline::before,
+.pj-tagline::after {
+  content: '~';
+  margin: 0 12px;
+  color: var(--pj-toxic-dark);
+}
+
+/* Menu */
+.pj-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 360px;
+  margin-bottom: 40px;
+}
+
+.pj-btn {
+  font-family: var(--pj-font-display);
+  font-size: clamp(20px, 4.5vw, 28px);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--pj-bone);
+  background: rgba(127, 255, 92, 0.04);
+  border: 1px solid rgba(127, 255, 92, 0.25);
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.pj-btn::before {
+  content: '> ';
+  color: var(--pj-toxic);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.pj-btn:hover,
+.pj-btn:focus-visible {
+  background: rgba(127, 255, 92, 0.12);
+  border-color: var(--pj-toxic);
+  color: var(--pj-toxic);
+  box-shadow: var(--pj-glow-toxic);
+  outline: none;
+  transform: translateX(4px);
+}
+
+.pj-btn:hover::before,
+.pj-btn:focus-visible::before {
+  opacity: 1;
+}
+
+.pj-btn:active {
+  transform: translateX(4px) scale(0.98);
+}
+
+.pj-btn--primary {
+  background: rgba(127, 255, 92, 0.12);
+  border-color: var(--pj-toxic);
+  color: var(--pj-toxic);
+  box-shadow: var(--pj-glow-toxic);
+}
+
+.pj-btn--primary::before {
+  opacity: 1;
+}
+
+/* Difficulty selector */
+.pj-diff-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.pj-diff-label {
+  font-size: 16px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--pj-bone-dim);
+  opacity: 0.7;
+}
+
+.pj-diff-options {
+  display: flex;
+  gap: 8px;
+}
+
+.pj-diff-btn {
+  font-family: var(--pj-font-display);
+  font-size: 18px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pj-bone-dim);
+  background: transparent;
+  border: 1px solid rgba(240, 232, 216, 0.15);
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pj-diff-btn:hover {
+  color: var(--pj-bone);
+  border-color: var(--pj-bone-dim);
+}
+
+.pj-diff-btn[aria-pressed="true"] {
+  color: var(--pj-toxic);
+  border-color: var(--pj-toxic);
+  background: rgba(127, 255, 92, 0.08);
+}
+
+/* Footer */
+.pj-footer {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  font-size: 16px;
+  color: var(--pj-bone-dim);
+  opacity: 0.5;
+  letter-spacing: 0.15em;
+  z-index: 5;
+}
+
+.pj-footer-version {
+  font-family: var(--pj-font-display);
+}
+
+.pj-footer-build {
+  font-family: var(--pj-font-display);
+  color: var(--pj-toxic-dark);
+}
+
+/* ============================================================
+   GAME OVERLAY (created dynamically by main.js)
+   ============================================================ */
+
+.pj-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--pj-void-deep);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--pj-font-display);
+  color: var(--pj-bone);
+  animation: pj-overlay-in 0.3s ease;
+}
+
+@keyframes pj-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.pj-overlay.pj-closing {
+  animation: pj-overlay-out 0.25s ease forwards;
+}
+
+@keyframes pj-overlay-out {
+  to { opacity: 0; }
+}
+
+.pj-stage {
+  position: relative;
+  height: 100%;
+  /* Aspect-ratio preserves 9:16 portrait. CSS will compute width. */
+  aspect-ratio: 9 / 16;
+  max-width: 100vw;
+  background: var(--pj-void);
+  overflow: hidden;
+  /* subtle vignette to anchor the playfield */
+  box-shadow:
+    inset 0 0 80px rgba(0, 0, 0, 0.8),
+    0 0 40px rgba(127, 255, 92, 0.15);
+}
+
+.pj-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Close button — top right of overlay */
+.pj-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  background: rgba(5, 3, 6, 0.7);
+  color: var(--pj-bone-dim);
+  border: 1px solid rgba(240, 232, 216, 0.2);
+  font-family: var(--pj-font-display);
+  font-size: 22px;
+  cursor: pointer;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.pj-close:hover,
+.pj-close:focus-visible {
+  color: var(--pj-blood);
+  border-color: var(--pj-blood);
+  background: rgba(255, 59, 59, 0.1);
+  outline: none;
+}
+
+/* Boot status text overlay (debug/status) */
+.pj-status {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  font-size: 14px;
+  color: var(--pj-toxic-dark);
+  letter-spacing: 0.1em;
+  opacity: 0.6;
+  z-index: 50;
+  pointer-events: none;
+}
+
+/* Side panels for desktop (decorative HUD slots) */
+.pj-side-panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 200px;
+  background: var(--pj-void-deep);
+  border: 1px solid rgba(127, 255, 92, 0.08);
+  display: none;
+  flex-direction: column;
+  padding: 20px;
+  font-size: 16px;
+  color: var(--pj-bone-dim);
+}
+
+.pj-side-panel--left { left: 0; }
+.pj-side-panel--right { right: 0; }
+
+/* Only show side panels on wide enough screens */
+@media (min-aspect-ratio: 16/9) and (min-width: 900px) {
+  .pj-side-panel { display: flex; }
+}
+
+/* ============================================================
+   MODALS (placeholders for settings, how-to-play, etc.)
+   ============================================================ */
+
+.pj-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 1, 3, 0.85);
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.pj-modal {
+  background: var(--pj-void);
+  border: 1px solid var(--pj-toxic-dark);
+  box-shadow: var(--pj-glow-toxic);
+  padding: 32px;
+  max-width: 480px;
+  width: 100%;
+  color: var(--pj-bone);
+}
+
+.pj-modal-title {
+  font-size: 32px;
+  color: var(--pj-toxic);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.pj-modal-body {
+  margin-bottom: 24px;
+  line-height: 1.5;
+  color: var(--pj-bone-dim);
+}
+
+.pj-modal-body p {
+  margin-bottom: 12px;
+}
+
+.pj-modal-body strong {
+  color: var(--pj-toxic);
+  font-weight: normal;
+}
+
+.pj-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+
+.pj-hidden { display: none !important; }
+.pj-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* Reduce motion fallback */
+@media (prefers-reduced-motion: reduce) {
+  .pj-title { animation: none; }
+  .pj-lobby::before { animation: none; }
+}

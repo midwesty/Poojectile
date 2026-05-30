@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#050306">
+<title>POOJECTILE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<main class="pj-lobby" id="pj-lobby">
+  <div class="pj-lobby-inner">
+    <h1 class="pj-title">POOJECTILE</h1>
+    <p class="pj-tagline">Sentient. Aerodynamic. Furious.</p>
+
+    <div class="pj-diff-row">
+      <span class="pj-diff-label">Difficulty</span>
+      <div class="pj-diff-options" role="radiogroup" aria-label="Difficulty">
+        <button class="pj-diff-btn" data-diff="easy"   role="radio" aria-checked="false">Easy</button>
+        <button class="pj-diff-btn" data-diff="normal" role="radio" aria-checked="true">Normal</button>
+        <button class="pj-diff-btn" data-diff="hard"   role="radio" aria-checked="false">Hard</button>
+      </div>
+    </div>
+
+    <nav class="pj-menu">
+      <button class="pj-btn pj-btn--primary" id="pj-start">Start Game</button>
+      <button class="pj-btn" id="pj-howto">How to Play</button>
+      <button class="pj-btn" id="pj-credits">Credits</button>
+    </nav>
+  </div>
+
+  <footer class="pj-footer">
+    <span class="pj-footer-version">v0.0.1</span>
+    <span class="pj-footer-build">PHASE 1 \u00B7 STEP 3</span>
+  </footer>
+</main>
+
+<!-- Modals (hidden by default) -->
+<div class="pj-modal-backdrop pj-hidden" id="pj-howto-modal" role="dialog" aria-modal="true" aria-labelledby="pj-howto-title">
+  <div class="pj-modal">
+    <h2 class="pj-modal-title" id="pj-howto-title">How To Play</h2>
+    <div class="pj-modal-body">
+      <p><strong>Desktop:</strong> WASD or arrow keys to move. Space or Z to fire. Shift or X for bomb. ESC pauses.</p>
+      <p><strong>Mobile:</strong> Drag anywhere on the playfield to move. Fire is automatic. Double-tap for bomb.</p>
+      <p>Your hitbox is smaller than your sprite. You can squeeze through bullets. Don't get hit anyway.</p>
+      <p style="color: var(--pj-toxic);">Engine modules are still being wired. This release boots and renders the title card. The full game arrives in subsequent steps.</p>
+    </div>
+    <div class="pj-modal-actions">
+      <button class="pj-btn" data-close-modal="pj-howto-modal">Acknowledged</button>
+    </div>
+  </div>
+</div>
+
+<div class="pj-modal-backdrop pj-hidden" id="pj-credits-modal" role="dialog" aria-modal="true" aria-labelledby="pj-credits-title">
+  <div class="pj-modal">
+    <h2 class="pj-modal-title" id="pj-credits-title">Credits</h2>
+    <div class="pj-modal-body">
+      <p><strong>POOJECTILE</strong> is a browser-native arcade shmup, part of the BOPware ecosystem.</p>
+      <p>Designed by midwesty. Built without frameworks or build tools, deployable as a static site.</p>
+      <p>Companion to <strong>SPACED</strong>. Powered by sentient garbage.</p>
+    </div>
+    <div class="pj-modal-actions">
+      <button class="pj-btn" data-close-modal="pj-credits-modal">Close</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { openPoojectile, readSetting, writeSetting } from './js/main.js';
+
+// ============================================================
+// Difficulty selector (persists to localStorage)
+// ============================================================
+const diffBtns = document.querySelectorAll('.pj-diff-btn');
+let currentDifficulty = readSetting('difficulty', 'normal');
+
+function applyDifficulty(diff) {
+  currentDifficulty = diff;
+  writeSetting('difficulty', diff);
+  diffBtns.forEach(btn => {
+    const isActive = btn.dataset.diff === diff;
+    btn.setAttribute('aria-pressed', isActive);
+    btn.setAttribute('aria-checked', isActive);
+  });
+}
+
+diffBtns.forEach(btn => {
+  btn.addEventListener('click', () => applyDifficulty(btn.dataset.diff));
+});
+applyDifficulty(currentDifficulty);
+
+// ============================================================
+// Start Game
+// ============================================================
+document.getElementById('pj-start').addEventListener('click', async () => {
+  try {
+    await openPoojectile(null, null, null, {
+      difficulty: currentDifficulty,
+      onClose: (info) => {
+        console.log('[Lobby] Poojectile closed:', info);
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    alert('Could not start Poojectile.\n\n' + err.message + '\n\nIf you opened this file directly with file://, run a local server instead:\n  python -m http.server 8000\nthen visit http://localhost:8000');
+  }
+});
+
+// ============================================================
+// Modals
+// ============================================================
+function openModal(id) {
+  document.getElementById(id).classList.remove('pj-hidden');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.add('pj-hidden');
+}
+
+document.getElementById('pj-howto').addEventListener('click', () => openModal('pj-howto-modal'));
+document.getElementById('pj-credits').addEventListener('click', () => openModal('pj-credits-modal'));
+
+document.querySelectorAll('[data-close-modal]').forEach(btn => {
+  btn.addEventListener('click', () => closeModal(btn.dataset.closeModal));
+});
+
+// Close modal by clicking backdrop
+document.querySelectorAll('.pj-modal-backdrop').forEach(backdrop => {
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) backdrop.classList.add('pj-hidden');
+  });
+});
+
+// ESC closes any open modal
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Escape') {
+    document.querySelectorAll('.pj-modal-backdrop:not(.pj-hidden)').forEach(m => {
+      m.classList.add('pj-hidden');
+    });
+  }
+});
+</script>
+
+</body>
+</html>

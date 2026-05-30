@@ -1,0 +1,164 @@
+{
+  "_meta": {
+    "schema_version": 1,
+    "description": "Global game configuration. All values here are read at boot and govern engine behavior. Fields prefixed with underscore are documentation/schema hints for the BOPware Builder.",
+    "last_updated": "2026-05-29",
+    "phase_status": "Phase 1 - Step 3 (Player + Projectiles)"
+  },
+
+  "title": "POOJECTILE",
+  "tagline": "Sentient. Aerodynamic. Furious.",
+  "version": "0.0.1",
+
+  "playfield": {
+    "_doc": "Internal logical resolution. The canvas scales to fit the screen while preserving this aspect ratio. Portrait 9:16 chosen for mobile comfort.",
+    "width": 540,
+    "height": 960,
+    "_ranges": {
+      "width": [240, 1080],
+      "height": [400, 1920]
+    }
+  },
+
+  "defaultDifficulty": "normal",
+
+  "difficulty": {
+    "_doc": "Difficulty presets scale enemy parameters and starting resources. Same content, tuned numbers.",
+    "easy": {
+      "displayName": "Easy",
+      "enemyHpMultiplier": 0.7,
+      "enemySpeedMultiplier": 0.85,
+      "enemyFireRateMultiplier": 0.7,
+      "enemyProjectileCountMultiplier": 0.7,
+      "startingLives": 5,
+      "scoreMultiplier": 0.75
+    },
+    "normal": {
+      "displayName": "Normal",
+      "enemyHpMultiplier": 1.0,
+      "enemySpeedMultiplier": 1.0,
+      "enemyFireRateMultiplier": 1.0,
+      "enemyProjectileCountMultiplier": 1.0,
+      "startingLives": 3,
+      "scoreMultiplier": 1.0
+    },
+    "hard": {
+      "displayName": "Hard",
+      "enemyHpMultiplier": 1.35,
+      "enemySpeedMultiplier": 1.15,
+      "enemyFireRateMultiplier": 1.3,
+      "enemyProjectileCountMultiplier": 1.25,
+      "startingLives": 2,
+      "scoreMultiplier": 1.5
+    },
+    "_ranges": {
+      "enemyHpMultiplier": [0.25, 3.0],
+      "enemySpeedMultiplier": [0.5, 2.0],
+      "enemyFireRateMultiplier": [0.25, 3.0],
+      "enemyProjectileCountMultiplier": [0.25, 3.0],
+      "startingLives": [1, 9],
+      "scoreMultiplier": [0.1, 5.0]
+    }
+  },
+
+  "player": {
+    "_doc": "Player tuning. Positions are 0.0-1.0 fractions of the playfield. Hitbox is intentionally smaller than visual.",
+    "startingX": 0.5,
+    "startingY": 0.85,
+    "accelerationFrames": 8,
+    "maxSpeed": 480,
+    "hitboxRadius": 8,
+    "visualRadius": 16,
+    "invincibilityFramesOnRespawn": 120,
+    "baseFireRateMs": 140,
+    "_ranges": {
+      "startingX": [0.0, 1.0],
+      "startingY": [0.0, 1.0],
+      "accelerationFrames": [1, 30],
+      "maxSpeed": [100, 1000],
+      "hitboxRadius": [2, 40],
+      "visualRadius": [8, 60],
+      "invincibilityFramesOnRespawn": [0, 300],
+      "baseFireRateMs": [40, 800]
+    }
+  },
+
+  "audio": {
+    "_doc": "Default volume levels. User-overrides saved to localStorage.",
+    "masterVolume": 0.7,
+    "sfxVolume": 0.8,
+    "musicVolume": 0.5,
+    "muted": false,
+    "_ranges": {
+      "masterVolume": [0.0, 1.0],
+      "sfxVolume": [0.0, 1.0],
+      "musicVolume": [0.0, 1.0]
+    }
+  },
+
+  "input": {
+    "_doc": "Key bindings use KeyboardEvent.code values. Arrays = any of these keys triggers the action. Mobile uses drag-to-move with offset.",
+    "keyboard": {
+      "moveUp": ["KeyW", "ArrowUp"],
+      "moveDown": ["KeyS", "ArrowDown"],
+      "moveLeft": ["KeyA", "ArrowLeft"],
+      "moveRight": ["KeyD", "ArrowRight"],
+      "fire": ["Space", "KeyZ"],
+      "bomb": ["ShiftLeft", "KeyX"],
+      "pause": ["Escape", "KeyP"]
+    },
+    "autoFire": true,
+    "mobileDragOffsetY": -40,
+    "_notes": "mobileDragOffsetY = pixels above touch point where player floats (so finger doesn't cover them)"
+  },
+
+  "debug": {
+    "_doc": "Debug flags. Set enabled=true to expose dev features in-game (FPS, hitbox overlay, data reload).",
+    "enabled": false,
+    "showFPS": false,
+    "showHitboxes": false,
+    "godMode": false,
+    "hotReloadData": false,
+    "logEvents": false
+  },
+
+  "storage": {
+    "_doc": "localStorage key names. Centralized so we never have magic strings sprinkled in code.",
+    "highScoresKey": "poojectile.highScores",
+    "savedProgressKey": "poojectile.progress",
+    "settingsKey": "poojectile.settings"
+  },
+
+  "palette": {
+    "_doc": "Master color palette. Referenced by name throughout the renderer. Editing here re-themes the entire game.",
+    "void": "#050306",
+    "voidDeep": "#020103",
+    "bone": "#f0e8d8",
+    "boneDim": "#a89e88",
+    "toxicGreen": "#7fff5c",
+    "toxicGreenDark": "#3a7d2a",
+    "bloodRed": "#ff3b3b",
+    "authorityBlue": "#4a9eff",
+    "bruisedPurple": "#2a1a3a",
+    "rustOrange": "#d97742",
+    "voidJellyCyan": "#2af2e0"
+  },
+
+  "phases": {
+    "_doc": "Valid game state machine phases. Engine enforces these.",
+    "valid": [
+      "boot",
+      "intro",
+      "menu",
+      "pregame",
+      "playing",
+      "paused",
+      "level_complete",
+      "boss_warning",
+      "boss_fight",
+      "game_over",
+      "cutscene",
+      "credits"
+    ]
+  }
+}
