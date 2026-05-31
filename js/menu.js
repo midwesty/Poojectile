@@ -18,7 +18,10 @@ const MENU_ITEMS = [
   {
     id: 'start',
     label: () => 'START GAME',
-    action: (gs) => transitionTo(gs.engine, PHASES.PREGAME),
+    action: (gs) => {
+      gs.levels?.startFirst();
+      transitionTo(gs.engine, PHASES.PREGAME);
+    },
   },
   {
     id: 'difficulty',

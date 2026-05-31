@@ -1,0 +1,84 @@
+{
+  "_meta": {
+    "schema_version": 1,
+    "description": "Level definitions. Each level has a theme (background colors + scroll speed), a list of waves (timed spawn events), and a completion condition. The engine plays levels in 'order' sequence; the last level's completion is treated as 'game complete' and routes to the high-score check.",
+    "last_updated": "2026-05-30"
+  },
+
+  "order": ["level1", "level2"],
+
+  "levels": {
+
+    "level1": {
+      "id": "level1",
+      "number": 1,
+      "displayName": "The Debris Field",
+      "subtitle": "Slow movers. Soft targets. Learn the rhythm.",
+      "musicTrack": "level1",
+      "theme": {
+        "_doc": "Cold grey-blue per the design spec for tutorial level.",
+        "starColor":   "#d8e8ff",
+        "nebulaColor": "#1a2638",
+        "debrisColor": "#3a4452",
+        "scrollSpeed": 60
+      },
+      "completion": {
+        "type": "boss_death"
+      },
+      "waves": [
+        { "at": 2,  "type": "spawn", "formation": "single",  "enemyType": "asteroid_small",  "count": 1 },
+        { "at": 4,  "type": "spawn", "formation": "single",  "enemyType": "asteroid_small",  "count": 1 },
+        { "at": 6,  "type": "spawn", "formation": "line_h",  "enemyType": "asteroid_small",  "count": 3 },
+        { "at": 9,  "type": "spawn", "formation": "single",  "enemyType": "asteroid_medium", "count": 1 },
+        { "at": 11, "type": "spawn", "formation": "random",  "enemyType": "debris_chunk",    "count": 3 },
+        { "at": 13, "type": "spawn", "formation": "v",       "enemyType": "asteroid_small",  "count": 5 },
+        { "at": 16, "type": "spawn", "formation": "line_h",  "enemyType": "debris_chunk",    "count": 4 },
+        { "at": 18, "type": "spawn", "formation": "single",  "enemyType": "asteroid_medium", "count": 1 },
+        { "at": 19, "type": "spawn", "formation": "single",  "enemyType": "asteroid_medium", "count": 1 },
+        { "at": 22, "type": "spawn", "formation": "random",  "enemyType": "asteroid_small",  "count": 4 },
+        { "at": 25, "type": "boss",  "bossId": "asteroid_giant", "musicTrack": "boss1" }
+      ]
+    },
+
+    "level2": {
+      "id": "level2",
+      "number": 2,
+      "displayName": "The Greener Void",
+      "subtitle": "A short scouting run. (Stub for testing the level loader.)",
+      "musicTrack": "level1",
+      "theme": {
+        "_doc": "Greenish tint to show theming differs from level 1.",
+        "starColor":   "#c8f0d8",
+        "nebulaColor": "#1a2a25",
+        "debrisColor": "#3a4a45",
+        "scrollSpeed": 75
+      },
+      "completion": {
+        "type": "wave_clear",
+        "_doc": "Level completes when all waves have fired AND no enemies remain."
+      },
+      "waves": [
+        { "at": 1,  "type": "spawn", "formation": "v",       "enemyType": "asteroid_small",  "count": 5 },
+        { "at": 5,  "type": "spawn", "formation": "line_h",  "enemyType": "debris_chunk",    "count": 4 },
+        { "at": 8,  "type": "spawn", "formation": "random",  "enemyType": "asteroid_small",  "count": 6 },
+        { "at": 12, "type": "spawn", "formation": "single",  "enemyType": "asteroid_medium", "count": 1 },
+        { "at": 13, "type": "spawn", "formation": "single",  "enemyType": "asteroid_medium", "count": 1 },
+        { "at": 16, "type": "spawn", "formation": "v",       "enemyType": "asteroid_small",  "count": 5 }
+      ]
+    }
+
+  },
+
+  "_ranges": {
+    "number":      [1, 99],
+    "scrollSpeed": [0, 400],
+    "at":          [0, 9999],
+    "count":       [1, 50]
+  },
+
+  "_enums": {
+    "completion.type": ["boss_death", "wave_clear", "timeout"],
+    "wave.type":       ["spawn", "boss"],
+    "formation":       ["single", "line_h", "v", "random"]
+  }
+}

@@ -28,6 +28,7 @@ import { playerSystem } from './player.js';
 import { enemiesSystem } from './enemies.js';
 import { powerupsSystem } from './powerups.js';
 import { bossesSystem } from './bosses.js';
+import { levelsSystem } from './levels.js';
 import { hudSystem, uiInputSystem } from './hud.js';
 import { highScoresSystem } from './highScores.js';
 
@@ -40,6 +41,7 @@ const DATA_FILES = {
   enemies:  new URL('../data/enemies.json',  import.meta.url).href,
   powerups: new URL('../data/powerups.json', import.meta.url).href,
   bosses:   new URL('../data/bosses.json',   import.meta.url).href,
+  levels:   new URL('../data/levels.json',   import.meta.url).href,
 };
 
 const DEFAULT_OPTS = {
@@ -165,6 +167,7 @@ export async function openPoojectile(spacedState = null, spacedData = null, spac
   registerSystem(engine, playerSystem);
   registerSystem(engine, enemiesSystem);
   registerSystem(engine, bossesSystem);
+  registerSystem(engine, levelsSystem);
 
   // UI input handler (priority 1 — runs before player so button taps
   // are captured before drag-to-move sees them)

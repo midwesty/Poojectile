@@ -304,11 +304,25 @@ export function registerBuiltinSystems(engine) {
 // phases that need a star background (boot, menu, pregame).
 // Level rendering (when it exists) will run AFTER this with its
 // own background overlay, so this gets covered up in 'playing'.
-const STAR_LAYERS = [
-  { count: 30, speed: 8,  size: 1,   color: 'rgba(240,232,216,0.35)' },
-  { count: 24, speed: 18, size: 1.5, color: 'rgba(240,232,216,0.6)'  },
-  { count: 16, speed: 36, size: 2.5, color: 'rgba(240,232,216,0.9)'  },
-];
+// ----- Parallax layer specs (counts, sizes, scroll multipliers).
+// Per-level COLORS come from gs.level.def.theme — these specs only
+// govern density and motion. scrollSpeed (in px/s for layer 3) also
+// comes from the theme; layers 1 and 2 are computed as fractions
+// of layer 3 so all layers stay coherent regardless of speed.
+// -----
+const PARALLAX_LAYERS = {
+  stars:   { count: 70, sizeMin: 0.5,  sizeMax: 1.8,  speedMul: 0.25 },
+  nebula:  { count: 6,  sizeMin: 110,  sizeMax: 240,  speedMul: 0.55 },
+  debris:  { count: 10, sizeMin: 4,    sizeMax: 10,   speedMul: 1.00 },
+};
+
+// Default theme used before any level is active (BOOT, MENU, etc.)
+const FALLBACK_THEME = {
+  starColor:   '#f0e8d8',
+  nebulaColor: '#1a1f2c',
+  debrisColor: '#2c2c34',
+  scrollSpeed: 35,
+};
 
 const backgroundSystem = {
   id: 'background',
@@ -316,47 +330,152 @@ const backgroundSystem = {
   phases: [
     PHASES.BOOT, PHASES.MENU, PHASES.PREGAME,
     PHASES.PLAYING, PHASES.PAUSED, PHASES.BOSS_WARNING,
-    PHASES.BOSS_FIGHT, PHASES.LEVEL_COMPLETE,
+    PHASES.BOSS_FIGHT, PHASES.LEVEL_COMPLETE, PHASES.HIGH_SCORE_ENTRY,
     PHASES.GAME_OVER, PHASES.CREDITS,
   ],
+
   init(gs) {
     const w = gs.fieldW, h = gs.fieldH;
-    gs._stars = STAR_LAYERS.map(layer => ({
-      ...layer,
-      points: Array.from({ length: layer.count }, () => ({
+
+    // Stars: uniform tiny points
+    const stars = [];
+    for (let i = 0; i < PARALLAX_LAYERS.stars.count; i++) {
+      stars.push({
         x: Math.random() * w,
         y: Math.random() * h,
-      })),
-    }));
+        size: rand(PARALLAX_LAYERS.stars.sizeMin, PARALLAX_LAYERS.stars.sizeMax),
+        alpha: 0.35 + Math.random() * 0.65,
+      });
+    }
+    // Nebula: soft large radial gradients
+    const nebula = [];
+    for (let i = 0; i < PARALLAX_LAYERS.nebula.count; i++) {
+      nebula.push({
+        x: Math.random() * w,
+        y: Math.random() * h * 1.4 - h * 0.2,
+        radius: rand(PARALLAX_LAYERS.nebula.sizeMin, PARALLAX_LAYERS.nebula.sizeMax),
+        intensity: 0.10 + Math.random() * 0.08,
+      });
+    }
+    // Debris: small polygon silhouettes
+    const debris = [];
+    for (let i = 0; i < PARALLAX_LAYERS.debris.count; i++) {
+      debris.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        size: rand(PARALLAX_LAYERS.debris.sizeMin, PARALLAX_LAYERS.debris.sizeMax),
+        rotation: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 0.6,
+        alpha: 0.55 + Math.random() * 0.30,
+      });
+    }
+    gs._bg = { stars, nebula, debris };
   },
+
   update(gs, dt) {
-    const h = gs.fieldH;
-    for (const layer of gs._stars) {
-      for (const star of layer.points) {
-        star.y = (star.y + layer.speed * dt + h) % h;
+    const w = gs.fieldW, h = gs.fieldH;
+    const theme = getTheme(gs);
+    const baseSpeed = theme.scrollSpeed;
+
+    // Pause scroll during boss fight (held-breath feel)
+    const scrollMul = (gs.phase === PHASES.BOSS_FIGHT) ? 0 : 1;
+
+    // Stars
+    const ssp = baseSpeed * PARALLAX_LAYERS.stars.speedMul * scrollMul;
+    for (const s of gs._bg.stars) {
+      s.y += ssp * dt;
+      if (s.y > h + 4) {
+        s.y = -4;
+        s.x = Math.random() * w;
+      }
+    }
+    // Nebula
+    const nsp = baseSpeed * PARALLAX_LAYERS.nebula.speedMul * scrollMul;
+    for (const n of gs._bg.nebula) {
+      n.y += nsp * dt;
+      if (n.y - n.radius > h) {
+        n.y = -n.radius;
+        n.x = Math.random() * w;
+      }
+    }
+    // Debris
+    const dsp = baseSpeed * PARALLAX_LAYERS.debris.speedMul * scrollMul;
+    for (const d of gs._bg.debris) {
+      d.y += dsp * dt;
+      d.rotation += d.spin * dt;
+      if (d.y - d.size > h) {
+        d.y = -d.size;
+        d.x = Math.random() * w;
       }
     }
   },
+
   render(gs, dt) {
     const { ctx, fieldW, fieldH } = gs;
-    // Starfield
-    for (const layer of gs._stars) {
-      ctx.fillStyle = layer.color;
-      for (const star of layer.points) {
-        ctx.fillRect(star.x, star.y, layer.size, layer.size);
-      }
+    const theme = getTheme(gs);
+
+    // Layer 1 — distant stars (most fragments)
+    ctx.save();
+    for (const s of gs._bg.stars) {
+      ctx.globalAlpha = s.alpha;
+      ctx.fillStyle = theme.starColor;
+      ctx.fillRect(s.x, s.y, s.size, s.size);
     }
-    // Faint biological haze (subtle green tint)
-    const haze = ctx.createRadialGradient(
-      fieldW * 0.5, fieldH * 0.45, 0,
-      fieldW * 0.5, fieldH * 0.45, fieldH * 0.7
-    );
-    haze.addColorStop(0, 'rgba(127, 255, 92, 0.05)');
-    haze.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = haze;
-    ctx.fillRect(0, 0, fieldW, fieldH);
+    ctx.restore();
+
+    // Layer 2 — soft nebula clouds (additive feel via low alpha)
+    ctx.save();
+    for (const n of gs._bg.nebula) {
+      const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.radius);
+      g.addColorStop(0, hexToRgba(theme.nebulaColor, n.intensity * 2.4));
+      g.addColorStop(1, hexToRgba(theme.nebulaColor, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Layer 3 — foreground debris silhouettes
+    ctx.save();
+    ctx.fillStyle = theme.debrisColor;
+    for (const d of gs._bg.debris) {
+      ctx.globalAlpha = d.alpha;
+      ctx.save();
+      ctx.translate(d.x, d.y);
+      ctx.rotate(d.rotation);
+      // Simple irregular hex
+      const s = d.size;
+      ctx.beginPath();
+      ctx.moveTo( s * 0.9,  0);
+      ctx.lineTo( s * 0.4,  s * 0.85);
+      ctx.lineTo(-s * 0.5,  s * 0.8);
+      ctx.lineTo(-s * 0.9,  0);
+      ctx.lineTo(-s * 0.3, -s * 0.75);
+      ctx.lineTo( s * 0.5, -s * 0.7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
   },
 };
+
+function getTheme(gs) {
+  return gs.level?.def?.theme || FALLBACK_THEME;
+}
+
+function rand(a, b) { return a + Math.random() * (b - a); }
+
+function hexToRgba(hex, alpha) {
+  if (!hex || !hex.startsWith('#') || hex.length !== 7) {
+    return `rgba(255, 255, 255, ${alpha})`;
+  }
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 // ----- Boot System -----
 // Shows briefly on startup, then auto-transitions to menu.
@@ -455,6 +574,20 @@ const pregameSystem = {
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+
+    // Level banner (when a level is active)
+    if (gs.level) {
+      ctx.fillStyle = palette.toxicGreen;
+      ctx.shadowColor = palette.toxicGreen;
+      ctx.shadowBlur = 12;
+      ctx.font = '22px VT323, monospace';
+      ctx.fillText(`LEVEL ${gs.level.number}`, fieldW / 2, fieldH * 0.30);
+
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = palette.bone;
+      ctx.font = 'bold 28px VT323, monospace';
+      ctx.fillText((gs.level.displayName || '').toUpperCase(), fieldW / 2, fieldH * 0.34);
+    }
 
     // Big GET READY with toxic glow + pulse
     const pulse = 1 + 0.06 * Math.sin(gs.elapsed * 8);
@@ -578,7 +711,8 @@ const playingSystem = {
     if (toPhase === PHASES.PLAYING && fromPhase === PHASES.PREGAME) {
       if (gs.audio) {
         gs.audio.play('levelStart');
-        gs.audio.music.play('level1');
+        const track = gs.level?.def?.musicTrack || 'level1';
+        gs.audio.music.play(track);
       }
     }
   },
@@ -684,7 +818,7 @@ const levelCompleteSystem = {
 
   update(gs, dt) {
     if (gs.phaseElapsed >= LEVEL_COMPLETE_DURATION) {
-      gs.routeAfterRun ? gs.routeAfterRun() : transitionTo(gs.engine, PHASES.MENU);
+      endLevelComplete(gs);
       return;
     }
     if (gs.phaseElapsed >= LEVEL_COMPLETE_INPUT_DELAY) {
@@ -692,7 +826,7 @@ const levelCompleteSystem = {
                    gs.input.justPressed('Enter') ||
                    gs.input.actionJustPressed('pause') ||
                    gs.input.pointer.justDown;
-      if (skip) gs.routeAfterRun ? gs.routeAfterRun() : transitionTo(gs.engine, PHASES.MENU);
+      if (skip) endLevelComplete(gs);
     }
   },
 
@@ -735,3 +869,16 @@ const levelCompleteSystem = {
     ctx.restore();
   },
 };
+
+// Routes the end of LEVEL_COMPLETE: next level via gs.levels.advanceOrFinish()
+// (which itself calls routeAfterRun on game completion). Fallback path
+// preserved if levels.js isn't registered.
+function endLevelComplete(gs) {
+  if (gs.levels && typeof gs.levels.advanceOrFinish === 'function') {
+    gs.levels.advanceOrFinish();
+  } else if (typeof gs.routeAfterRun === 'function') {
+    gs.routeAfterRun();
+  } else {
+    transitionTo(gs.engine, PHASES.MENU);
+  }
+}

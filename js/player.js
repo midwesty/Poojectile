@@ -87,18 +87,26 @@ export const playerSystem = {
     const p = gs.player;
     const pcfg = gs.config.player;
 
-    // PREGAME entry = full reset. This is the canonical "new run starts" hook.
+    // PREGAME entry — two flavors:
+    //   1) MENU → PREGAME  = FRESH RUN. Full wipe.
+    //   2) LEVEL_COMPLETE → PREGAME = NEXT LEVEL.
+    //      Keep score and lives; refresh HP, bombs, weapon, modifiers.
     if (toPhase === PHASES.PREGAME) {
+      const freshRun = fromPhase === PHASES.MENU || fromPhase === PHASES.BOOT;
+
+      if (freshRun) {
+        p.lives = getDifficultyStartingLives(gs);
+        p.score = 0;
+      }
+
+      // Refreshed every PREGAME entry (fresh OR next level)
       p.hp = p.maxHp;
-      p.lives = getDifficultyStartingLives(gs);
-      p.score = 0;
       p.bombs = 2;
       p.x = gs.fieldW * pcfg.startingX;
       p.y = gs.fieldH * pcfg.startingY;
       p.vx = 0; p.vy = 0;
       p.iFrames = 0;
       p.fireCooldown = 0;
-      // Reset weapon + modifiers
       p.weaponId = gs.data?.weapons?.defaultWeapon || 'basic';
       p.modifiers.shield_bubble = false;
       p.modifiers.speed_boost = 0;
