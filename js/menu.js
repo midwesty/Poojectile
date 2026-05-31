@@ -59,6 +59,9 @@ export const menuSystem = {
   phases: [PHASES.MENU],
 
   onEnterPhase(gs, fromPhase) {
+    // Catch-all: ensure no gameplay/boss music lingers on the menu
+    gs.audio?.music.stop();
+
     gs._menu = {
       cursor: 0,
       hoverIndex: -1,

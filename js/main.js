@@ -27,7 +27,8 @@ import { particlesSystem } from './particles.js';
 import { playerSystem } from './player.js';
 import { enemiesSystem } from './enemies.js';
 import { powerupsSystem } from './powerups.js';
-import { hudSystem } from './hud.js';
+import { bossesSystem } from './bosses.js';
+import { hudSystem, uiInputSystem } from './hud.js';
 
 const CONFIG_PATH = new URL('../data/config.json', import.meta.url).href;
 
@@ -37,6 +38,7 @@ const DATA_FILES = {
   weapons:  new URL('../data/weapons.json',  import.meta.url).href,
   enemies:  new URL('../data/enemies.json',  import.meta.url).href,
   powerups: new URL('../data/powerups.json', import.meta.url).href,
+  bosses:   new URL('../data/bosses.json',   import.meta.url).href,
 };
 
 const DEFAULT_OPTS = {
@@ -161,6 +163,11 @@ export async function openPoojectile(spacedState = null, spacedData = null, spac
   registerSystem(engine, powerupsSystem);
   registerSystem(engine, playerSystem);
   registerSystem(engine, enemiesSystem);
+  registerSystem(engine, bossesSystem);
+
+  // UI input handler (priority 1 — runs before player so button taps
+  // are captured before drag-to-move sees them)
+  registerSystem(engine, uiInputSystem);
 
   // HUD (renders on top of everything during gameplay)
   registerSystem(engine, hudSystem);

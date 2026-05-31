@@ -18,7 +18,7 @@
 // This is purely rendering; gameplay logic stays in player.js / enemies.js.
 // ============================================================
 
-import { PHASES } from './engine.js';
+import { PHASES, transitionTo } from './engine.js';
 import { hexAlpha, resolveColor } from './utils.js';
 
 // ----- Layout constants -----
@@ -53,8 +53,134 @@ const BOTTOM_STRIP_H = 70;       // tall enough to host modifiers + weapon/bombs
 const BOSS_BAR_Y     = 100;
 const BOSS_BAR_H     = 22;
 
+// Pause button (top-left, below HP segments)
+const PAUSE_BTN_CX   = SIDE_MARGIN + 18;
+const PAUSE_BTN_CY   = 90;
+const PAUSE_BTN_R    = 22;
+
+// Bomb tap zone (bottom-right, wraps existing widget). Mobile-friendly 44pt minimum.
+const BOMB_HIT_W     = 80;
+const BOMB_HIT_H     = 44;
+
+// Pause overlay buttons
+const OVERLAY_BTN_W  = 240;
+const OVERLAY_BTN_H  = 54;
+
 // ============================================================
-// SYSTEM
+// UI INPUT SYSTEM
+//
+// Runs at priority 1 — BEFORE playerSystem (50) — so a tap on a HUD
+// button is consumed before player.js sees it. Sets gs._uiHoldsPointer
+// while the user keeps a finger on a button so the player doesn't drift
+// toward the button position. The HUD render pass below uses the same
+// layout helpers so visuals stay in sync with hit testing.
+// ============================================================
+
+export const uiInputSystem = {
+  id: 'uiInput',
+  priority: 1,
+  phases: [
+    PHASES.PLAYING, PHASES.PAUSED,
+    PHASES.BOSS_WARNING, PHASES.BOSS_FIGHT,
+  ],
+
+  update(gs, dt) {
+    const ptr = gs.input.pointer;
+
+    // Release the hold flag the moment the pointer is up
+    if (!ptr.down) gs._uiHoldsPointer = false;
+    if (!ptr.justDown) return;
+
+    const x = ptr.x;
+    const y = ptr.y;
+    const isPaused = gs.phase === PHASES.PAUSED;
+
+    // ----- Pause overlay buttons (only when paused) -----
+    if (isPaused) {
+      if (pointInRect(x, y, getResumeBtnRect(gs))) {
+        togglePause(gs);
+        gs._uiHoldsPointer = true;
+        return;
+      }
+      if (pointInRect(x, y, getExitBtnRect(gs))) {
+        gs.audio?.play('menuSelect');
+        gs._uiHoldsPointer = true;
+        gs._pausedFromPhase = null;
+        transitionTo(gs.engine, PHASES.MENU);
+        return;
+      }
+    }
+
+    // ----- Pause button (always visible during gameplay & pause) -----
+    if (pointInCircle(x, y, PAUSE_BTN_CX, PAUSE_BTN_CY, PAUSE_BTN_R)) {
+      togglePause(gs);
+      gs._uiHoldsPointer = true;
+      return;
+    }
+
+    // ----- Bomb button (only when running and bombs available) -----
+    if (!isPaused && gs.player && gs.player.bombs > 0 && !gs.boss?.dying) {
+      if (pointInRect(x, y, getBombBtnRect(gs))) {
+        gs.triggerBomb?.();
+        gs._uiHoldsPointer = true;
+        return;
+      }
+    }
+  },
+};
+
+function togglePause(gs) {
+  gs.audio?.play('pauseToggle');
+  if (gs.phase === PHASES.PAUSED) {
+    const back = gs._pausedFromPhase || PHASES.PLAYING;
+    gs._pausedFromPhase = null;
+    transitionTo(gs.engine, back);
+  } else {
+    gs._pausedFromPhase = gs.phase;
+    transitionTo(gs.engine, PHASES.PAUSED);
+  }
+}
+
+function pointInCircle(px, py, cx, cy, r) {
+  const dx = px - cx, dy = py - cy;
+  return dx * dx + dy * dy <= r * r;
+}
+
+function pointInRect(px, py, rect) {
+  return px >= rect.x && px <= rect.x + rect.w &&
+         py >= rect.y && py <= rect.y + rect.h;
+}
+
+function getBombBtnRect(gs) {
+  // Wraps the bottom-right bomb widget rendered at (fieldW - SIDE_MARGIN, fieldH - 18).
+  return {
+    x: gs.fieldW - SIDE_MARGIN - BOMB_HIT_W,
+    y: gs.fieldH - BOMB_HIT_H - 4,
+    w: BOMB_HIT_W,
+    h: BOMB_HIT_H,
+  };
+}
+
+function getResumeBtnRect(gs) {
+  return {
+    x: (gs.fieldW - OVERLAY_BTN_W) / 2,
+    y: gs.fieldH * 0.56,
+    w: OVERLAY_BTN_W,
+    h: OVERLAY_BTN_H,
+  };
+}
+
+function getExitBtnRect(gs) {
+  return {
+    x: (gs.fieldW - OVERLAY_BTN_W) / 2,
+    y: gs.fieldH * 0.66,
+    w: OVERLAY_BTN_W,
+    h: OVERLAY_BTN_H,
+  };
+}
+
+// ============================================================
+// HUD SYSTEM
 // ============================================================
 
 export const hudSystem = {
@@ -117,6 +243,7 @@ export const hudSystem = {
     renderTopLeft(ctx, gs);
     renderTopRight(ctx, gs);
     renderBottomBar(ctx, gs);
+    renderPauseButton(ctx, gs);
 
     if (gs.level) renderLevelIndicator(ctx, gs);
     if (gs.boss && gs.hud.bossBarAlpha > 0.01) renderBossBar(ctx, gs);
@@ -425,11 +552,27 @@ function drawWeaponIcon(ctx, cx, cy, weaponId, palette) {
 function renderBombWidget(ctx, gs, rightX, cy) {
   const palette = gs.config.palette;
   const p = gs.player;
+  const usable = p.bombs > 0;
 
-  // Count text right-aligned
-  ctx.fillStyle = palette.authorityBlue;
-  ctx.shadowColor = palette.authorityBlue;
-  ctx.shadowBlur = 6;
+  // Tap-target background (signals interactivity, especially on mobile)
+  if (usable) {
+    const rect = getBombBtnRect(gs);
+    ctx.save();
+    ctx.fillStyle = 'rgba(83, 137, 250, 0.12)';   // authorityBlue at low alpha
+    ctx.strokeStyle = hexAlpha(palette.authorityBlue, 0.45);
+    ctx.lineWidth = 1;
+    roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Count text right-aligned (dimmed when no bombs left)
+  ctx.fillStyle = usable ? palette.authorityBlue : palette.boneDim;
+  if (usable) {
+    ctx.shadowColor = palette.authorityBlue;
+    ctx.shadowBlur = 6;
+  }
   ctx.font = 'bold 17px VT323, monospace';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
@@ -437,15 +580,18 @@ function renderBombWidget(ctx, gs, rightX, cy) {
   ctx.shadowBlur = 0;
 
   // Bomb icon to the left of the count
-  drawBombIcon(ctx, rightX - 38, cy, palette);
+  drawBombIcon(ctx, rightX - 38, cy, palette, usable);
 }
 
-function drawBombIcon(ctx, cx, cy, palette) {
+function drawBombIcon(ctx, cx, cy, palette, usable = true) {
   ctx.save();
+  const color = usable ? palette.authorityBlue : palette.boneDim;
   // Body
-  ctx.fillStyle = palette.authorityBlue;
-  ctx.shadowColor = palette.authorityBlue;
-  ctx.shadowBlur = 6;
+  ctx.fillStyle = color;
+  if (usable) {
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 6;
+  }
   ctx.beginPath();
   ctx.arc(cx, cy + 1, 7, 0, Math.PI * 2);
   ctx.fill();
@@ -453,13 +599,26 @@ function drawBombIcon(ctx, cx, cy, palette) {
   ctx.shadowBlur = 0;
   ctx.fillRect(cx - 1, cy - 7, 2, 4);
   // Fuse spark
-  ctx.fillStyle = '#ffe44a';
-  ctx.shadowColor = '#ffe44a';
-  ctx.shadowBlur = 4;
-  ctx.beginPath();
-  ctx.arc(cx, cy - 8, 1.5, 0, Math.PI * 2);
-  ctx.fill();
+  if (usable) {
+    ctx.fillStyle = '#ffe44a';
+    ctx.shadowColor = '#ffe44a';
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 8, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y,     x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x,     y + h, rr);
+  ctx.arcTo(x,     y + h, x,     y,     rr);
+  ctx.arcTo(x,     y,     x + w, y,     rr);
+  ctx.closePath();
 }
 
 // ============================================================
@@ -535,28 +694,121 @@ function renderBossBar(ctx, gs) {
 // PAUSE OVERLAY (moved from playingSystem)
 // ============================================================
 
+function renderPauseButton(ctx, gs) {
+  // Hidden during transitional non-gameplay phases. Always shown during
+  // PLAYING / BOSS_WARNING / BOSS_FIGHT / PAUSED, so users can pause AND
+  // unpause through the same control.
+  const palette = gs.config.palette;
+  const cx = PAUSE_BTN_CX;
+  const cy = PAUSE_BTN_CY;
+  const r  = PAUSE_BTN_R;
+  const paused = gs.phase === PHASES.PAUSED;
+
+  ctx.save();
+  // Circular background
+  ctx.fillStyle = 'rgba(5, 3, 6, 0.62)';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  // Outline (greener when paused = "play to resume")
+  ctx.strokeStyle = paused ? palette.toxicGreen : hexAlpha(palette.bone, 0.7);
+  ctx.lineWidth = 1.5;
+  if (paused) {
+    ctx.shadowColor = palette.toxicGreen;
+    ctx.shadowBlur = 10;
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Glyph: pause bars OR play triangle
+  ctx.fillStyle = paused ? palette.toxicGreen : palette.bone;
+  if (paused) {
+    // Play triangle (pointing right) — slightly offset to look optically centered
+    ctx.beginPath();
+    ctx.moveTo(cx - 5, cy - 8);
+    ctx.lineTo(cx - 5, cy + 8);
+    ctx.lineTo(cx + 8, cy);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    // Two vertical bars
+    ctx.fillRect(cx - 7, cy - 8, 4, 16);
+    ctx.fillRect(cx + 3, cy - 8, 4, 16);
+  }
+  ctx.restore();
+}
+
 function renderPauseOverlay(ctx, gs) {
   const palette = gs.config.palette;
   const fieldW = gs.fieldW;
   const fieldH = gs.fieldH;
+
   ctx.save();
-  ctx.fillStyle = 'rgba(2, 1, 3, 0.72)';
+  ctx.fillStyle = 'rgba(2, 1, 3, 0.78)';
   ctx.fillRect(0, 0, fieldW, fieldH);
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // Pulsing PAUSED
+  // Pulsing PAUSED title
   const pulse = 1 + 0.04 * Math.sin(gs.elapsed * 4);
   ctx.shadowColor = palette.toxicGreen;
   ctx.shadowBlur = 28 * pulse;
   ctx.fillStyle = palette.toxicGreen;
   ctx.font = `bold ${Math.round(56 * pulse)}px VT323, monospace`;
-  ctx.fillText('PAUSED', fieldW / 2, fieldH * 0.45);
+  ctx.fillText('PAUSED', fieldW / 2, fieldH * 0.38);
 
   ctx.shadowBlur = 0;
+
+  // ----- Resume button -----
+  drawOverlayButton(
+    ctx,
+    getResumeBtnRect(gs),
+    'RESUME',
+    palette.toxicGreen,
+    true
+  );
+
+  // ----- Exit to Menu button -----
+  drawOverlayButton(
+    ctx,
+    getExitBtnRect(gs),
+    'EXIT TO MENU',
+    palette.bloodRed,
+    false
+  );
+
+  // Hint
   ctx.fillStyle = palette.boneDim;
-  ctx.font = '20px VT323, monospace';
-  ctx.fillText('ESC to resume', fieldW / 2, fieldH * 0.53);
+  ctx.font = '14px VT323, monospace';
+  ctx.fillText('ESC to resume', fieldW / 2, fieldH * 0.78);
+
+  ctx.restore();
+}
+
+function drawOverlayButton(ctx, rect, label, color, primary) {
+  ctx.save();
+  // Glow shadow on primary
+  if (primary) {
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 18;
+  }
+  // Fill (subtle tint)
+  ctx.fillStyle = primary ? hexAlpha(color, 0.20) : 'rgba(0, 0, 0, 0.4)';
+  roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 8);
+  ctx.fill();
+
+  // Border
+  ctx.shadowBlur = primary ? 12 : 0;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = color;
+  ctx.font = 'bold 24px VT323, monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, rect.x + rect.w / 2, rect.y + rect.h / 2 + 1);
   ctx.restore();
 }

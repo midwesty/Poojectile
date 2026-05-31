@@ -194,6 +194,89 @@ const SFX = {
     });
   },
 
+  // ---------- Bomb detonation (massive impact) ----------
+  bomb(ctx, dest) {
+    const t = ctx.currentTime;
+    const dur = 0.85;
+    // Big sweeping low-pass noise
+    const noise = makeNoiseSource(ctx, dur);
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(2200, t);
+    f.frequency.exponentialRampToValueAtTime(80, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.5, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    noise.connect(f).connect(g).connect(dest);
+    noise.start(t);
+    noise.stop(t + dur);
+
+    // Sub-bass thump
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(110, t);
+    sub.frequency.exponentialRampToValueAtTime(28, t + dur);
+    const sg = ctx.createGain();
+    sg.gain.setValueAtTime(0.55, t);
+    sg.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    sub.connect(sg).connect(dest);
+    sub.start(t);
+    sub.stop(t + dur + 0.05);
+  },
+
+  // ---------- Boss warning (two-tone alarm) ----------
+  bossWarning(ctx, dest) {
+    const t = ctx.currentTime;
+    for (let i = 0; i < 4; i++) {
+      const start = t + i * 0.4;
+      [880, 660].forEach((freq, j) => {
+        const noteStart = start + j * 0.16;
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = freq;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, noteStart);
+        g.gain.linearRampToValueAtTime(0.15, noteStart + 0.02);
+        g.gain.setValueAtTime(0.15, noteStart + 0.12);
+        g.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.16);
+        osc.connect(g).connect(dest);
+        osc.start(noteStart);
+        osc.stop(noteStart + 0.17);
+      });
+    }
+  },
+
+  // ---------- Level complete (ascending major fanfare) ----------
+  levelComplete(ctx, dest) {
+    const t = ctx.currentTime;
+    const notes = [392, 523, 659, 784, 988, 1175];  // G4 C5 E5 G5 B5 D6
+    notes.forEach((freq, i) => {
+      const start = t + i * 0.11;
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.16, start);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + 0.6);
+      osc.connect(g).connect(dest);
+      osc.start(start);
+      osc.stop(start + 0.62);
+    });
+    // Final sustained chord on the last note
+    const finalStart = t + notes.length * 0.11;
+    [523, 659, 784].forEach((freq) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.10, finalStart);
+      g.gain.exponentialRampToValueAtTime(0.0001, finalStart + 1.2);
+      osc.connect(g).connect(dest);
+      osc.start(finalStart);
+      osc.stop(finalStart + 1.25);
+    });
+  },
+
   // ---------- Power-up pickup (bright ascending chime) ----------
   pickup(ctx, dest) {
     const t = ctx.currentTime;
@@ -371,6 +454,56 @@ const TRACKS = {
         ],
       },
 
+    },
+  },
+
+  // ---------- Level 1 Boss: The First Mass ----------
+  // Driving, aggressive — sawtooth bass on every beat, busier
+  // lead with descending runs, 16th hi-hat, dense kick pattern.
+  // Same key (A minor) for cohesion with level1.
+  boss1: {
+    bpm: 134,
+    stepsPerBeat: 4,
+    voices: {
+      bass: {
+        osc: 'sawtooth',
+        volume: 0.20,
+        noteDuration: 0.13,
+        filter: { type: 'lowpass', freq: 700 },
+        patterns: [
+          ['A2', 0, 'A2', 0, 'A2', 0, 'A2', 0, 'E2', 0, 'E2', 0, 'E2', 0, 'E2', 0],
+          ['A2', 0, 'A2', 0, 'C3', 0, 'C3', 0, 'F2', 0, 'F2', 0, 'G2', 0, 'G2', 0],
+        ],
+      },
+      lead: {
+        osc: 'square',
+        volume: 0.09,
+        noteDuration: 0.13,
+        filter: { type: 'lowpass', freq: 2800 },
+        patterns: [
+          ['E5', 'D5', 'C5', 'B4', 'A4', 0, 'E4', 0, 'A4', 'B4', 'C5', 'D5', 'E5', 0, 'A4', 0],
+          ['A4', 0, 'C5', 0, 'E5', 0, 'C5', 0, 'D5', 0, 'F5', 0, 'E5', 'D5', 'C5', 0],
+        ],
+      },
+      hat: {
+        osc: 'noise',
+        volume: 0.08,
+        noteDuration: 0.03,
+        filter: { type: 'highpass', freq: 7000 },
+        patterns: [
+          [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+          [0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1],
+        ],
+      },
+      kick: {
+        osc: 'kick',
+        volume: 0.40,
+        noteDuration: 0.10,
+        patterns: [
+          [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+          [1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+        ],
+      },
     },
   },
 

@@ -35,6 +35,7 @@ const CULL_MARGIN_SIDES  = 60;
 // ----- Test spawner tuning (REMOVE WHEN LEVEL LOADER ARRIVES) -----
 const TEST_SPAWN_INTERVAL = 1.1;  // seconds between spawns
 const TEST_SPAWN_POOL = ['asteroid_small', 'asteroid_small', 'asteroid_small', 'asteroid_medium', 'debris_chunk'];
+const BOSS_TRIGGER_TIME = 25;     // seconds of PLAYING before boss spawns
 
 function makeEnemy() {
   // Preallocate everything an enemy might need — zero alloc during gameplay.
@@ -144,6 +145,14 @@ export const enemiesSystem = {
     }
   },
 
+  onEnterPhase(gs, fromPhase, toPhase) {
+    // Reset the test-mode boss trigger when a fresh run starts
+    if (toPhase === PHASES.PLAYING && fromPhase === PHASES.PREGAME) {
+      gs.enemies._playingTime = 0;
+      gs.enemies._bossTriggered = false;
+    }
+  },
+
   update(gs, dt) {
     if (gs.phase === PHASES.PAUSED) return;
 
@@ -173,6 +182,15 @@ export const enemiesSystem = {
       if (gs.enemies._testSpawnAccumulator >= TEST_SPAWN_INTERVAL) {
         gs.enemies._testSpawnAccumulator -= TEST_SPAWN_INTERVAL;
         spawnTestEnemy(gs);
+      }
+
+      // ---- Test boss trigger (REMOVE WITH LEVEL LOADER) ----
+      gs.enemies._playingTime = (gs.enemies._playingTime ?? 0) + dt;
+      if (!gs.enemies._bossTriggered && gs.enemies._playingTime >= BOSS_TRIGGER_TIME) {
+        gs.enemies._bossTriggered = true;
+        gs._pendingBossTypeId = 'asteroid_giant';
+        gs._pendingBossMusicTrack = 'boss1';
+        transitionTo(gs.engine, PHASES.BOSS_WARNING);
       }
     }
   },

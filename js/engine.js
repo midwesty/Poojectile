@@ -137,6 +137,26 @@ function safeCall(sys, hook, ...args) {
 export function startEngine(engine) {
   const gs = engine.gameState;
 
+  // ----- Screen FX state + helpers -----
+  gs.screenShake = { intensity: 0, duration: 0, initialDuration: 0 };
+  gs.screenFlash = { color: '#ffffff', alpha: 0, duration: 0, initialDuration: 0 };
+
+  gs.shake = (intensity, duration) => {
+    // Take the strongest active shake (energy = intensity * duration)
+    if (intensity * duration > gs.screenShake.intensity * gs.screenShake.duration) {
+      gs.screenShake.intensity = intensity;
+      gs.screenShake.duration = duration;
+      gs.screenShake.initialDuration = duration;
+    }
+  };
+
+  gs.flash = (color, alpha, duration) => {
+    gs.screenFlash.color = color || '#ffffff';
+    gs.screenFlash.alpha = alpha;
+    gs.screenFlash.duration = duration;
+    gs.screenFlash.initialDuration = duration;
+  };
+
   // Init all systems
   for (const sys of engine.systems) {
     if (sys.init) safeCall(sys, 'init', gs);
@@ -185,10 +205,42 @@ export function startEngine(engine) {
     gs.ctx.fillStyle = gs.config.palette.voidDeep;
     gs.ctx.fillRect(0, 0, gs.fieldW, gs.fieldH);
 
+    // Tick shake / flash timers
+    if (gs.screenShake.duration > 0) {
+      gs.screenShake.duration = Math.max(0, gs.screenShake.duration - dt);
+    }
+    if (gs.screenFlash.duration > 0) {
+      gs.screenFlash.duration = Math.max(0, gs.screenFlash.duration - dt);
+    }
+
+    // Compute current shake offset
+    let shakeX = 0, shakeY = 0;
+    if (gs.screenShake.duration > 0) {
+      const sf = gs.screenShake.duration / gs.screenShake.initialDuration;
+      const intensity = gs.screenShake.intensity * sf;
+      shakeX = (Math.random() - 0.5) * 2 * intensity;
+      shakeY = (Math.random() - 0.5) * 2 * intensity;
+    }
+
+    gs.ctx.save();
+    if (shakeX !== 0 || shakeY !== 0) gs.ctx.translate(shakeX, shakeY);
+
     for (const sys of engine.systems) {
       if (sys.render && systemActiveIn(sys, phase)) {
         safeCall(sys, 'render', gs, dt);
       }
+    }
+
+    gs.ctx.restore();
+
+    // Screen flash overlay (drawn AFTER restore so it's not shaken)
+    if (gs.screenFlash.duration > 0) {
+      const ff = gs.screenFlash.duration / gs.screenFlash.initialDuration;
+      gs.ctx.save();
+      gs.ctx.globalAlpha = gs.screenFlash.alpha * ff;
+      gs.ctx.fillStyle = gs.screenFlash.color;
+      gs.ctx.fillRect(0, 0, gs.fieldW, gs.fieldH);
+      gs.ctx.restore();
     }
 
     // ----- DEBUG overlay (always last, always on top) -----
@@ -241,6 +293,8 @@ export function registerBuiltinSystems(engine) {
   registerSystem(engine, bootSystem);
   registerSystem(engine, pregameSystem);
   registerSystem(engine, playingSystem);
+  registerSystem(engine, bossWarningSystem);
+  registerSystem(engine, levelCompleteSystem);
   registerSystem(engine, gameOverSystem);
 }
 
@@ -449,6 +503,7 @@ const gameOverSystem = {
   priority: 200,
   phases: [PHASES.GAME_OVER],
   onEnterPhase(gs) {
+    gs.audio?.music.stop();
     gs.audio?.play('gameOver');
   },
   update(gs, dt) {
@@ -507,36 +562,175 @@ const gameOverSystem = {
 };
 
 // ----- Playing System -----
-// Game director for the playing/paused phases. Handles ESC-to-pause
-// and starts/stops the level music. HUD rendering and pause overlay
-// live in hud.js.
+// Game director for active gameplay. Handles ESC-to-pause from
+// ANY gameplay phase (playing, boss warning, boss fight), tracks
+// _pausedFromPhase so resuming returns to the right phase, and
+// starts the level music on the first PLAYING entry from PREGAME.
 const playingSystem = {
   id: 'playing',
-  priority: 199,        // runs just before HUD (200) for clean update ordering
-  phases: [PHASES.PLAYING, PHASES.PAUSED],
+  priority: 199,
+  phases: [PHASES.PLAYING, PHASES.PAUSED, PHASES.BOSS_FIGHT, PHASES.BOSS_WARNING],
 
   onEnterPhase(gs, fromPhase, toPhase) {
-    // Newly entering playing/paused from outside (typically from PREGAME).
-    // PAUSED <-> PLAYING transitions don't fire this — both phases are
-    // already in this system's phase list.
-    if (gs.audio) {
-      if (fromPhase === PHASES.PREGAME) gs.audio.play('levelStart');
-      gs.audio.music.play('level1');
+    // Start level music only on the canonical "enter playing from pregame"
+    // transition. Other entries (e.g. PAUSED <- BOSS_FIGHT) shouldn't restart it.
+    if (toPhase === PHASES.PLAYING && fromPhase === PHASES.PREGAME) {
+      if (gs.audio) {
+        gs.audio.play('levelStart');
+        gs.audio.music.play('level1');
+      }
     }
-  },
-
-  onExitPhase(gs, fromPhase, toPhase) {
-    // Leaving the playing/paused band (e.g. → GAME_OVER, → MENU)
-    if (gs.audio) gs.audio.music.stop();
   },
 
   update(gs, dt) {
     if (gs.input.actionJustPressed('pause')) {
       gs.audio?.play('pauseToggle');
-      transitionTo(
-        gs.engine,
-        gs.phase === PHASES.PLAYING ? PHASES.PAUSED : PHASES.PLAYING
-      );
+      if (gs.phase === PHASES.PAUSED) {
+        const back = gs._pausedFromPhase || PHASES.PLAYING;
+        gs._pausedFromPhase = null;
+        transitionTo(gs.engine, back);
+      } else {
+        gs._pausedFromPhase = gs.phase;
+        transitionTo(gs.engine, PHASES.PAUSED);
+      }
     }
+  },
+};
+
+// ----- Boss Warning System -----
+// Brief flashing warning before the boss spawns. Triggers boss music
+// (which auto-stops level music via music.play's cross-fade), plays an
+// alarm SFX, and after BOSS_WARNING_DURATION transitions to BOSS_FIGHT
+// and spawns the queued boss.
+//
+// Trigger from gameplay: set gs._pendingBossTypeId (and optionally
+// gs._pendingBossMusicTrack) then transitionTo(BOSS_WARNING).
+const BOSS_WARNING_DURATION = 2.6;
+
+const bossWarningSystem = {
+  id: 'bossWarning',
+  priority: 195,
+  phases: [PHASES.BOSS_WARNING],
+
+  onEnterPhase(gs, fromPhase) {
+    if (gs.audio) {
+      gs.audio.music.play(gs._pendingBossMusicTrack || 'boss1');
+      gs.audio.play('bossWarning');
+    }
+  },
+
+  update(gs, dt) {
+    if (gs.phaseElapsed >= BOSS_WARNING_DURATION) {
+      const typeId = gs._pendingBossTypeId || 'asteroid_giant';
+      gs._pendingBossTypeId = null;
+      gs._pendingBossMusicTrack = null;
+      if (gs.bosses) {
+        gs.bosses.spawn(typeId, gs.fieldW / 2, -120);
+      }
+      transitionTo(gs.engine, PHASES.BOSS_FIGHT);
+    }
+  },
+
+  render(gs, dt) {
+    const { ctx, fieldW, fieldH, phaseElapsed } = gs;
+    const palette = gs.config.palette;
+
+    // Strobing red tint across entire screen on the alarm beat
+    const beat = Math.sin(phaseElapsed * 12);
+    if (beat > 0) {
+      ctx.save();
+      ctx.fillStyle = `rgba(255, 59, 59, ${0.10 + beat * 0.10})`;
+      ctx.fillRect(0, 0, fieldW, fieldH);
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const pulse = 1 + 0.08 * Math.sin(phaseElapsed * 10);
+    ctx.shadowColor = palette.bloodRed;
+    ctx.shadowBlur = 26 * pulse;
+    ctx.fillStyle = palette.bloodRed;
+    ctx.font = `bold ${Math.round(44 * pulse)}px VT323, monospace`;
+    ctx.fillText('WARNING', fieldW / 2, fieldH * 0.43);
+
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = palette.bone;
+    ctx.font = '22px VT323, monospace';
+    ctx.fillText('MASS APPROACHING', fieldW / 2, fieldH * 0.51);
+    ctx.restore();
+  },
+};
+
+// ----- Level Complete System -----
+// Shown after the boss death sequence finishes. Plays the level
+// complete fanfare, stops music, displays final score, and returns
+// to MENU after a delay or any input.
+const LEVEL_COMPLETE_DURATION = 4.5;
+const LEVEL_COMPLETE_INPUT_DELAY = 1.6;
+
+const levelCompleteSystem = {
+  id: 'levelComplete',
+  priority: 200,
+  phases: [PHASES.LEVEL_COMPLETE],
+
+  onEnterPhase(gs) {
+    if (gs.audio) {
+      gs.audio.music.stop();
+      gs.audio.play('levelComplete');
+    }
+  },
+
+  update(gs, dt) {
+    if (gs.phaseElapsed >= LEVEL_COMPLETE_DURATION) {
+      transitionTo(gs.engine, PHASES.MENU);
+      return;
+    }
+    if (gs.phaseElapsed >= LEVEL_COMPLETE_INPUT_DELAY) {
+      const skip = gs.input.justPressed('Space') ||
+                   gs.input.justPressed('Enter') ||
+                   gs.input.actionJustPressed('pause') ||
+                   gs.input.pointer.justDown;
+      if (skip) transitionTo(gs.engine, PHASES.MENU);
+    }
+  },
+
+  render(gs, dt) {
+    const { ctx, fieldW, fieldH } = gs;
+    const palette = gs.config.palette;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(2, 1, 3, 0.72)';
+    ctx.fillRect(0, 0, fieldW, fieldH);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const pulse = 1 + 0.05 * Math.sin(gs.elapsed * 4);
+    ctx.shadowColor = palette.toxicGreen;
+    ctx.shadowBlur = 30 * pulse;
+    ctx.fillStyle = palette.toxicGreen;
+    ctx.font = `bold ${Math.round(54 * pulse)}px VT323, monospace`;
+    ctx.fillText('LEVEL', fieldW / 2, fieldH * 0.34);
+    ctx.fillText('CLEARED', fieldW / 2, fieldH * 0.44);
+
+    ctx.shadowBlur = 0;
+    if (gs._bossScoreGain) {
+      ctx.fillStyle = palette.bone;
+      ctx.font = '20px VT323, monospace';
+      ctx.fillText(`BOSS BONUS  +${gs._bossScoreGain}`, fieldW / 2, fieldH * 0.56);
+    }
+    ctx.fillStyle = palette.bone;
+    ctx.font = 'bold 28px VT323, monospace';
+    ctx.fillText(`SCORE  ${(gs.player?.score ?? 0).toString().padStart(7, '0')}`, fieldW / 2, fieldH * 0.64);
+
+    if (gs.phaseElapsed >= LEVEL_COMPLETE_INPUT_DELAY) {
+      const a = 0.5 + 0.5 * Math.sin(gs.elapsed * 3);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = palette.boneDim;
+      ctx.font = '16px VT323, monospace';
+      ctx.fillText('[ PRESS ANYTHING TO CONTINUE ]', fieldW / 2, fieldH * 0.82);
+    }
+    ctx.restore();
   },
 };

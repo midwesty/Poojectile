@@ -78,6 +78,9 @@ export const playerSystem = {
       // weapon
       weaponId: gs.data?.weapons?.defaultWeapon || 'basic',
     };
+
+    // Expose bomb trigger globally on gs so hud.js / keyboard / etc. can fire it
+    gs.triggerBomb = () => triggerBomb(gs);
   },
 
   onEnterPhase(gs, fromPhase, toPhase) {
@@ -129,7 +132,7 @@ export const playerSystem = {
     // ---------- Movement intent ----------
     let targetVx = 0, targetVy = 0;
 
-    const usingTouch = input.pointer.type === 'touch' && input.pointer.down;
+    const usingTouch = input.pointer.type === 'touch' && input.pointer.down && !gs._uiHoldsPointer;
     if (usingTouch) {
       // Drag-to-move: float ABOVE the finger so it doesn't occlude
       const targetX = clamp(input.pointer.x, cfg.visualRadius, gs.fieldW - cfg.visualRadius);
@@ -192,6 +195,11 @@ export const playerSystem = {
     const firing = shouldFire(gs);
     if (firing && p.fireCooldown <= 0) {
       fireWeapon(gs);
+    }
+
+    // ---------- Bomb input ----------
+    if (gs.input.actionJustPressed('bomb') && p.bombs > 0 && !gs.boss?.dying) {
+      gs.triggerBomb();
     }
   },
 
@@ -347,8 +355,9 @@ export const playerSystem = {
 
 function shouldFire(gs) {
   const input = gs.input;
-  // Touch fires while finger is down (auto-fire on mobile by design)
-  if (input.pointer.type === 'touch' && input.pointer.down) return true;
+  // Touch fires while finger is down (auto-fire on mobile by design) —
+  // but suppress when a HUD button has captured the pointer
+  if (input.pointer.type === 'touch' && input.pointer.down && !gs._uiHoldsPointer) return true;
   // Auto-fire from config: any directional movement OR fire-key fires
   if (gs.config.input.autoFire && (input.action('fire') || hasAnyKeyboardMovement(input))) {
     return input.action('fire');
@@ -423,4 +432,64 @@ function makeBumps() {
 function getDifficultyStartingLives(gs) {
   return gs.config.difficulty[gs.difficulty]?.startingLives
     ?? gs.config.difficulty.normal.startingLives;
+}
+
+// ============================================================
+// Bomb mechanic
+// Triggered via gs.triggerBomb() — wired from keyboard input here
+// and from the HUD bomb button in hud.js.
+// Effect: clears all non-boss enemies on screen (awards their score),
+// deals fixed damage to any boss, big screen flash + shake + sound.
+// ============================================================
+
+const BOMB_BOSS_DAMAGE = 15;
+
+function triggerBomb(gs) {
+  const p = gs.player;
+  if (!p || p.bombs <= 0) return;
+  p.bombs -= 1;
+
+  // Audio + screen effects
+  gs.audio?.play('bomb');
+  if (gs.shake) gs.shake(20, 0.55);
+  if (gs.flash) gs.flash('#ffffff', 0.6, 0.45);
+
+  // Radial particle wave
+  gs.particles?.burst({
+    x: p.x, y: p.y,
+    count: 80, speedMin: 280, speedMax: 720,
+    lifetime: 0.95, size: 5,
+    color: '#ffffff', glow: 24,
+  });
+  gs.particles?.burst({
+    x: p.x, y: p.y,
+    count: 48, speedMin: 120, speedMax: 420,
+    lifetime: 1.1, size: 4,
+    color: gs.config.palette.toxicGreen, glow: 18,
+  });
+
+  // Clear all enemies (award score for each)
+  const diff = gs.config.difficulty[gs.difficulty] || gs.config.difficulty.normal;
+  const scoreMulti = p.modifiers.score_multiplier > 0 ? 2 : 1;
+  if (gs.enemies) {
+    gs.enemies.forEachAlive((e) => {
+      const gain = Math.round((e.typeDef.scoreValue ?? 0) * (diff.scoreMultiplier ?? 1) * scoreMulti);
+      p.score += gain;
+      // Quick death poof
+      gs.particles?.burst({
+        x: e.x, y: e.y,
+        count: 10, speedMin: 60, speedMax: 200,
+        lifetime: 0.4, size: 3,
+        color: e.typeDef.color, glow: 6,
+      });
+      gs.enemies.pool.release(e);
+    });
+  }
+
+  // Damage boss (bomb bypasses phase damage scaling — it's a heroic moment)
+  if (gs.boss && gs.boss.alive && !gs.boss.dying) {
+    gs.boss.hp -= BOMB_BOSS_DAMAGE;
+    gs.boss.flashTime = 0.3;
+    // Boss death is handled by bosses.js update when hp <= 0
+  }
 }

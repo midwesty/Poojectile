@@ -1,0 +1,72 @@
+{
+  "_meta": {
+    "schema_version": 1,
+    "description": "Boss definitions. Each boss has an ordered 'phases' array — the boss enters phase 0 on spawn and advances to the next phase when hp drops below the next phase's hpThreshold (a 0..1 fraction of maxHp). Each phase has its own movement, damage multiplier, and contact damage values. Death sequence runs for deathDuration seconds before the LEVEL_COMPLETE transition.",
+    "last_updated": "2026-05-29"
+  },
+
+  "bosses": {
+
+    "asteroid_giant": {
+      "id": "asteroid_giant",
+      "displayName": "The First Mass",
+      "internalName": "asteroid_giant",
+      "maxHp": 80,
+      "size": 78,
+      "color": "#6a5a48",
+      "accentColor": "#241a10",
+      "coreColor": "#ff3b3b",
+      "scoreValue": 5000,
+      "deathDuration": 4.5,
+      "warningText": "MASS APPROACHING",
+      "musicTrack": "boss1",
+
+      "phases": [
+        {
+          "id": "armored",
+          "hpThreshold": 1.0,
+          "movePattern": "sine_slow",
+          "moveAmplitude": 140,
+          "moveFrequency": 0.4,
+          "anchorY": 180,
+          "rotationSpeed": 0.4,
+          "damageTakenMultiplier": 0.35,
+          "contactDamage": 2,
+          "shootPattern": "none"
+        },
+        {
+          "id": "exposed",
+          "hpThreshold": 0.5,
+          "movePattern": "erratic_drift",
+          "moveAmplitude": 200,
+          "moveFrequency": 1.1,
+          "anchorY": 220,
+          "rotationSpeed": 1.0,
+          "damageTakenMultiplier": 1.0,
+          "contactDamage": 3,
+          "shootPattern": "none"
+        }
+      ]
+    }
+
+  },
+
+  "_ranges": {
+    "maxHp":                  [10, 9999],
+    "size":                   [30, 200],
+    "scoreValue":             [100, 999999],
+    "deathDuration":          [1, 15],
+    "hpThreshold":            [0, 1],
+    "moveAmplitude":          [0, 400],
+    "moveFrequency":          [0.05, 5],
+    "anchorY":                [50, 600],
+    "rotationSpeed":          [-5, 5],
+    "damageTakenMultiplier":  [0.05, 5],
+    "contactDamage":          [0, 20]
+  },
+
+  "_enums": {
+    "movePattern":  ["sine_slow", "erratic_drift", "swoop", "stationary"],
+    "shootPattern": ["none", "aimed", "spread", "burst", "spiral", "predictive"]
+  }
+}
