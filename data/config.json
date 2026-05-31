@@ -3,7 +3,7 @@
     "schema_version": 1,
     "description": "Global game configuration. All values here are read at boot and govern engine behavior. Fields prefixed with underscore are documentation/schema hints for the BOPware Builder.",
     "last_updated": "2026-05-29",
-    "phase_status": "Phase 1 - Step 8 (Boss + Pause UI + Bomb)"
+    "phase_status": "Phase 1 - Step 9 (High Scores)"
   },
 
   "title": "POOJECTILE",
@@ -154,6 +154,7 @@
       "playing",
       "paused",
       "level_complete",
+      "high_score_entry",
       "boss_warning",
       "boss_fight",
       "game_over",

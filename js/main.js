@@ -29,6 +29,7 @@ import { enemiesSystem } from './enemies.js';
 import { powerupsSystem } from './powerups.js';
 import { bossesSystem } from './bosses.js';
 import { hudSystem, uiInputSystem } from './hud.js';
+import { highScoresSystem } from './highScores.js';
 
 const CONFIG_PATH = new URL('../data/config.json', import.meta.url).href;
 
@@ -174,6 +175,9 @@ export async function openPoojectile(spacedState = null, spacedData = null, spac
 
   // Menu phase
   registerSystem(engine, menuSystem);
+
+  // High scores (data + HIGH_SCORE_ENTRY phase)
+  registerSystem(engine, highScoresSystem);
 
   // Status text & go
   setStatus(gameState, '');  // clear; bg system handles the visual now

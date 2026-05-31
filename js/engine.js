@@ -30,18 +30,19 @@
 // Match config.json phases.valid. Import these instead of typing
 // strings so typos become reference errors.
 export const PHASES = Object.freeze({
-  BOOT:            'boot',
-  INTRO:           'intro',
-  MENU:            'menu',
-  PREGAME:         'pregame',
-  PLAYING:         'playing',
-  PAUSED:          'paused',
-  LEVEL_COMPLETE:  'level_complete',
-  BOSS_WARNING:    'boss_warning',
-  BOSS_FIGHT:      'boss_fight',
-  GAME_OVER:       'game_over',
-  CUTSCENE:        'cutscene',
-  CREDITS:         'credits',
+  BOOT:               'boot',
+  INTRO:              'intro',
+  MENU:               'menu',
+  PREGAME:            'pregame',
+  PLAYING:            'playing',
+  PAUSED:             'paused',
+  LEVEL_COMPLETE:     'level_complete',
+  HIGH_SCORE_ENTRY:   'high_score_entry',
+  BOSS_WARNING:       'boss_warning',
+  BOSS_FIGHT:         'boss_fight',
+  GAME_OVER:          'game_over',
+  CUTSCENE:           'cutscene',
+  CREDITS:            'credits',
 });
 
 // ============================================================
@@ -513,7 +514,7 @@ const gameOverSystem = {
       gs.input.justPressed('Space') ||
       gs.input.justPressed('Enter') ||
       gs.input.pointer.justDown;
-    if (skip) transitionTo(gs.engine, PHASES.MENU);
+    if (skip) gs.routeAfterRun ? gs.routeAfterRun() : transitionTo(gs.engine, PHASES.MENU);
   },
   render(gs, dt) {
     const { ctx, fieldW, fieldH } = gs;
@@ -683,7 +684,7 @@ const levelCompleteSystem = {
 
   update(gs, dt) {
     if (gs.phaseElapsed >= LEVEL_COMPLETE_DURATION) {
-      transitionTo(gs.engine, PHASES.MENU);
+      gs.routeAfterRun ? gs.routeAfterRun() : transitionTo(gs.engine, PHASES.MENU);
       return;
     }
     if (gs.phaseElapsed >= LEVEL_COMPLETE_INPUT_DELAY) {
@@ -691,7 +692,7 @@ const levelCompleteSystem = {
                    gs.input.justPressed('Enter') ||
                    gs.input.actionJustPressed('pause') ||
                    gs.input.pointer.justDown;
-      if (skip) transitionTo(gs.engine, PHASES.MENU);
+      if (skip) gs.routeAfterRun ? gs.routeAfterRun() : transitionTo(gs.engine, PHASES.MENU);
     }
   },
 

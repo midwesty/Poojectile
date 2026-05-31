@@ -12,6 +12,7 @@
 // ============================================================
 
 import { PHASES, transitionTo } from './engine.js';
+import { getTopFor } from './highScores.js';
 
 const MENU_ITEMS = [
   {
@@ -146,6 +147,9 @@ export const menuSystem = {
     ctx.font = '18px VT323, monospace';
     ctx.fillText(`~  ${gs.config.tagline}  ~`, fieldW / 2, fieldH * (TITLE_Y + 0.07));
 
+    // --- High scores panel ---
+    renderHighScoresPanel(ctx, gs);
+
     // --- Menu items ---
     const rects = computeItemRects(gs);
     ctx.font = '28px VT323, monospace';
@@ -215,4 +219,61 @@ function pointInRect(x, y, r) {
 function activate(gs, index) {
   const item = MENU_ITEMS[index];
   if (item && item.action) item.action(gs);
+}
+
+// ============================================================
+// High Scores Panel — top 5 entries between tagline and menu items
+// ============================================================
+
+function renderHighScoresPanel(ctx, gs) {
+  const palette = gs.config.palette;
+  const fieldW = gs.fieldW;
+  const fieldH = gs.fieldH;
+
+  const top = getTopFor(gs, 5);
+  if (!top.length) return;
+
+  // Header
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = palette.toxicGreen;
+  ctx.shadowColor = palette.toxicGreen;
+  ctx.shadowBlur = 8;
+  ctx.font = 'bold 18px VT323, monospace';
+  ctx.fillText('HIGH SCORES', fieldW / 2, fieldH * 0.31);
+  ctx.shadowBlur = 0;
+
+  // Entries: rank | initials | score, monospaced columns
+  const rowH    = 22;
+  const startY  = fieldH * 0.34;
+  const cx      = fieldW / 2;
+  const colGap  = 18;
+
+  ctx.font = '18px VT323, monospace';
+  for (let i = 0; i < top.length; i++) {
+    const e = top[i];
+    const y = startY + i * rowH;
+    const isTop = i === 0;
+
+    const rankColor = isTop ? palette.toxicGreen : palette.bone;
+    const scoreColor = isTop ? palette.toxicGreen : palette.bone;
+    const initialsColor = isTop ? palette.toxicGreen : palette.bone;
+
+    // Rank
+    ctx.textAlign = 'right';
+    ctx.fillStyle = rankColor;
+    ctx.fillText(`${(i + 1).toString().padStart(2, ' ')}.`, cx - 76 - colGap, y);
+
+    // Initials (centered)
+    ctx.textAlign = 'center';
+    ctx.fillStyle = initialsColor;
+    ctx.fillText(e.initials, cx, y);
+
+    // Score
+    ctx.textAlign = 'left';
+    ctx.fillStyle = scoreColor;
+    ctx.fillText(e.score.toString().padStart(7, '0'), cx + colGap + 4, y);
+  }
+  ctx.restore();
 }
