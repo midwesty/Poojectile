@@ -56,6 +56,10 @@ function makeEnemy() {
       targetVx: 0, nextChange: 0,
       t: 0,
     },
+    // Shooting state (initialized per-spawn)
+    shootTimer: 0,         // counts UP until ready to fire
+    shootReady: false,     // whether minFireY + firstShotDelay have passed
+    spiralPhase: 0,        // running angle for spiral pattern
   };
 }
 
@@ -98,6 +102,11 @@ export const enemiesSystem = {
         e.rotation = Math.random() * Math.PI * 2;
         e.rotationSpeed = (Math.random() - 0.5) * 1.2;
         e.flashTime = 0;
+
+        // Shooting state reset
+        e.shootTimer = 0;
+        e.shootReady = false;
+        e.spiralPhase = Math.random() * Math.PI * 2;
 
         // Random asteroid silhouette
         for (let i = 0; i < VERTEX_COUNT; i++) {
@@ -153,6 +162,11 @@ export const enemiesSystem = {
       e.rotation += e.rotationSpeed * dt;
       e.age += dt;
       if (e.flashTime > 0) e.flashTime = Math.max(0, e.flashTime - dt);
+
+      // Shoot AI — pause during boss phases so the boss is the singular threat
+      if (gs.phase === PHASES.PLAYING) {
+        updateEnemyShooting(gs, e, dt);
+      }
 
       // Cull when fully off-screen on bottom or sides
       if (e.y - e.size > h + CULL_MARGIN_BOTTOM ||
@@ -517,4 +531,124 @@ function lighten(hex, amount) {
   const g = Math.min(255, Math.round(parseInt(hex.slice(3, 5), 16) + 255 * amount));
   const b = Math.min(255, Math.round(parseInt(hex.slice(5, 7), 16) + 255 * amount));
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+// ============================================================
+// Enemy shooting AI
+// ============================================================
+
+function updateEnemyShooting(gs, e, dt) {
+  const def = e.typeDef;
+  const pattern = def?.shootPattern;
+  if (!pattern || pattern === 'none') return;
+
+  const intervalMs   = def.shootInterval ?? 0;
+  if (intervalMs <= 0) return;
+
+  // Entry checks: don't fire until past min Y AND past first-shot delay
+  const firstDelayMs = def.shootFirstDelayMs ?? 0;
+  const minFireY     = def.shootMinFireY ?? 0;
+  if (e.age * 1000 < firstDelayMs) return;
+  if (e.y < minFireY) return;
+
+  e.shootTimer += dt * 1000;   // ms
+  if (e.shootTimer < intervalMs) return;
+  e.shootTimer -= intervalMs;
+
+  // Fire based on pattern
+  fireEnemyShot(gs, e, pattern);
+}
+
+function fireEnemyShot(gs, e, pattern) {
+  const def = e.typeDef;
+  const projectileTypeId = def.projectileType || 'enemy_pellet';
+  const projDef = gs.data?.weapons?.projectiles?.[projectileTypeId];
+  if (!projDef) return;
+
+  const player = gs.player;
+  const speed = projDef.speed ?? 380;
+
+  switch (pattern) {
+    case 'aimed': {
+      const { vx, vy } = aimAt(e.x, e.y, player.x, player.y, speed);
+      spawnEnemyProjectile(gs, e, projectileTypeId, vx, vy);
+      gs.audio?.play('enemyShoot');
+      break;
+    }
+
+    case 'spread': {
+      const count = Math.max(2, def.shotsPerBurst ?? 3);
+      const spread = def.shotSpreadAngle ?? 0.5;
+      const { vx, vy } = aimAt(e.x, e.y, player.x, player.y, speed);
+      const baseAngle = Math.atan2(vy, vx);
+      const half = spread / 2;
+      const step = count > 1 ? spread / (count - 1) : 0;
+      for (let i = 0; i < count; i++) {
+        const a = baseAngle - half + step * i;
+        spawnEnemyProjectile(gs, e, projectileTypeId, Math.cos(a) * speed, Math.sin(a) * speed);
+      }
+      gs.audio?.play('enemyShoot');
+      break;
+    }
+
+    case 'burst': {
+      // Multiple shots at the same target in quick succession.
+      // For simplicity here we fire them all this frame, slightly offset
+      // along the aim ray so they form a "line" of shots.
+      const count = Math.max(2, def.shotsPerBurst ?? 3);
+      const { vx, vy } = aimAt(e.x, e.y, player.x, player.y, speed);
+      const ux = vx / speed, uy = vy / speed;
+      for (let i = 0; i < count; i++) {
+        const offset = i * 14;
+        const sx = e.x - ux * offset;
+        const sy = e.y - uy * offset;
+        spawnEnemyProjectileAt(gs, sx, sy, projectileTypeId, vx, vy);
+      }
+      gs.audio?.play('enemyShoot');
+      break;
+    }
+
+    case 'spiral': {
+      // Single shot whose angle rotates each fire event
+      e.spiralPhase += 0.55;
+      const a = e.spiralPhase;
+      spawnEnemyProjectile(gs, e, projectileTypeId, Math.cos(a) * speed, Math.sin(a) * speed);
+      gs.audio?.play('enemyShoot');
+      break;
+    }
+
+    case 'predictive': {
+      // Lead the target by an estimated time-to-target
+      const dx = player.x - e.x;
+      const dy = player.y - e.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const tToTarget = dist / speed;
+      const leadX = player.x + (player.vx || 0) * tToTarget;
+      const leadY = player.y + (player.vy || 0) * tToTarget;
+      const { vx, vy } = aimAt(e.x, e.y, leadX, leadY, speed);
+      spawnEnemyProjectile(gs, e, projectileTypeId, vx, vy);
+      gs.audio?.play('enemyShoot');
+      break;
+    }
+  }
+}
+
+function aimAt(fromX, fromY, toX, toY, speed) {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const len = Math.hypot(dx, dy) || 1;
+  return { vx: (dx / len) * speed, vy: (dy / len) * speed };
+}
+
+function spawnEnemyProjectile(gs, e, typeId, vx, vy) {
+  spawnEnemyProjectileAt(gs, e.x, e.y, typeId, vx, vy);
+}
+
+function spawnEnemyProjectileAt(gs, x, y, typeId, vx, vy) {
+  gs.projectiles?.spawn({
+    typeId,
+    x, y,
+    vx, vy,
+    owner: 'enemy',
+  });
 }

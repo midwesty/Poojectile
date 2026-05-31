@@ -1,8 +1,8 @@
 {
   "_meta": {
     "schema_version": 1,
-    "description": "Enemy type definitions. Each enemy has movement, shooting, drop table, scoring, visual, and death effect data. dropTable entries reference powerups.json IDs and roll independently; first success drops. projectileType references weapons.json.projectiles.",
-    "last_updated": "2026-05-29"
+    "description": "Enemy type definitions. Each enemy has movement, shooting, drop table, scoring, visual, and death effect data. dropTable entries reference powerups.json IDs and roll independently; first success drops. projectileType references weapons.json.projectiles. Shooting fields: shootPattern (from enum, 'none' disables firing), shootInterval (ms between shot events), shootFirstDelayMs (ms after spawn before first shot), shootMinFireY (won't fire until enemy y >= this pixel value, lets them enter screen first), shotsPerBurst (count for burst pattern), shotSpreadAngle (radians for spread pattern).",
+    "last_updated": "2026-05-30"
   },
 
   "enemies": {
@@ -73,17 +73,72 @@
       "deathEffect": "small_pop",
       "special": null,
       "contactDamage": 1
+    },
+
+    "interceptor_small": {
+      "id": "interceptor_small",
+      "displayName": "Picket Drone",
+      "hp": 2,
+      "speed": 95,
+      "size": 18,
+      "movePattern": "sine_wave",
+      "shootPattern": "aimed",
+      "shootInterval": 1400,
+      "shootFirstDelayMs": 800,
+      "shootMinFireY": 80,
+      "projectileType": "enemy_pellet",
+      "dropTable": [
+        { "powerupId": "health_small",  "chance": 0.10 },
+        { "powerupId": "weapon_rapid",  "chance": 0.06 }
+      ],
+      "scoreValue": 200,
+      "color": "#a93333",
+      "accentColor": "#3a1010",
+      "deathEffect": "small_pop",
+      "special": null,
+      "contactDamage": 2
+    },
+
+    "gunner_medium": {
+      "id": "gunner_medium",
+      "displayName": "Spread Sentinel",
+      "hp": 4,
+      "speed": 55,
+      "size": 30,
+      "movePattern": "sine_wave",
+      "shootPattern": "spread",
+      "shootInterval": 2000,
+      "shootFirstDelayMs": 1100,
+      "shootMinFireY": 110,
+      "shotsPerBurst": 3,
+      "shotSpreadAngle": 0.55,
+      "projectileType": "enemy_pellet",
+      "dropTable": [
+        { "powerupId": "weapon_scatter",  "chance": 0.15 },
+        { "powerupId": "damage_up",       "chance": 0.10 },
+        { "powerupId": "shield_bubble",   "chance": 0.08 }
+      ],
+      "scoreValue": 400,
+      "color": "#c45a2a",
+      "accentColor": "#3c1808",
+      "deathEffect": "medium_explosion",
+      "special": null,
+      "contactDamage": 2
     }
 
   },
 
   "_ranges": {
-    "hp":             [1, 999],
-    "speed":          [10, 600],
-    "size":           [4, 80],
-    "shootInterval":  [100, 10000],
-    "scoreValue":     [1, 100000],
-    "contactDamage":  [0, 10]
+    "hp":                 [1, 999],
+    "speed":              [10, 600],
+    "size":               [4, 80],
+    "shootInterval":      [100, 10000],
+    "shootFirstDelayMs":  [0, 10000],
+    "shootMinFireY":      [0, 960],
+    "shotsPerBurst":      [1, 12],
+    "shotSpreadAngle":    [0, 3.14],
+    "scoreValue":         [1, 100000],
+    "contactDamage":      [0, 10]
   },
 
   "_enums": {

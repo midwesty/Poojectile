@@ -14,7 +14,7 @@
 // into gs.data.weapons.projectiles at boot.
 // ============================================================
 
-import { PHASES } from './engine.js';
+import { PHASES, transitionTo } from './engine.js';
 import { createPool, resolveColor, hexAlpha } from './utils.js';
 
 const POOL_SIZE = 300;
@@ -67,7 +67,7 @@ export const projectilesSystem = {
         slot.vy = vy;
         slot.age = 0;
         slot.lifetime = (def.lifetimeMs ?? 3000) / 1000;
-        slot.damage = damage ?? 1;
+        slot.damage = damage ?? def.damage ?? 1;
         slot.owner = owner ?? def.owner ?? 'player';
         slot.typeId = typeId;
         slot.typeDef = def;
@@ -90,6 +90,7 @@ export const projectilesSystem = {
   update(gs, dt) {
     if (gs.phase === PHASES.PAUSED) return;
     const w = gs.fieldW, h = gs.fieldH;
+    const player = gs.player;
     gs.projectiles.forEachAlive((p) => {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
@@ -104,6 +105,18 @@ export const projectilesSystem = {
       if (p.x < -CULL_MARGIN || p.x > w + CULL_MARGIN ||
           p.y < -CULL_MARGIN || p.y > h + CULL_MARGIN) {
         gs.projectiles.pool.release(p);
+        return;
+      }
+
+      // ----- Enemy-owned projectile vs player -----
+      if (p.owner === 'enemy' && player && player.iFrames <= 0) {
+        const r = p.typeDef.size + player.hitRadius;
+        const dx = p.x - player.x;
+        const dy = p.y - player.y;
+        if (dx * dx + dy * dy <= r * r) {
+          applyEnemyProjectileHit(gs, p);
+          gs.projectiles.pool.release(p);
+        }
       }
     });
   },
@@ -176,6 +189,55 @@ function drawProjectileShape(ctx, shape, x, y, size) {
       ctx.arc(x, y, size, 0, Math.PI * 2);
       ctx.fill();
       break;
+    }
+  }
+}
+
+// ============================================================
+// Damage path — enemy projectile hits player
+// Mirrors the contact-damage flow in enemies.js / bosses.js:
+// shield absorbs first, otherwise HP drops, i-frames apply,
+// lives decrement on 0 HP, game over when out of lives.
+// ============================================================
+
+function applyEnemyProjectileHit(gs, projectile) {
+  const p = gs.player;
+  const palette = gs.config.palette;
+  const damage = projectile.damage ?? 1;
+
+  // Shield absorb
+  if (p.modifiers.shield_bubble) {
+    p.modifiers.shield_bubble = false;
+    p.iFrames = gs.config.player.invincibilityFramesOnRespawn / 60;
+    gs.audio?.play('shieldBreak');
+    gs.particles?.burst({
+      x: p.x, y: p.y,
+      count: 22, speedMin: 120, speedMax: 320,
+      lifetime: 0.6, size: 2.5, color: '#4af2ff', glow: 16,
+    });
+    return;
+  }
+
+  p.hp -= damage;
+  p.iFrames = gs.config.player.invincibilityFramesOnRespawn / 60;
+  gs.audio?.play('damage');
+  gs.particles?.burst({
+    x: p.x, y: p.y,
+    count: 12, speedMin: 80, speedMax: 240,
+    lifetime: 0.5, size: 3, color: palette.bloodRed, glow: 10,
+  });
+
+  if (p.hp <= 0) {
+    p.lives -= 1;
+    if (p.lives > 0) {
+      // Respawn in place with full HP
+      p.hp = p.maxHp;
+      const cfg = gs.config.player;
+      p.x = gs.fieldW * cfg.startingX;
+      p.y = gs.fieldH * cfg.startingY;
+      p.vx = 0; p.vy = 0;
+    } else {
+      transitionTo(gs.engine, PHASES.GAME_OVER);
     }
   }
 }

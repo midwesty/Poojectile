@@ -44,7 +44,7 @@
       "id": "level2",
       "number": 2,
       "displayName": "The Greener Void",
-      "subtitle": "A short scouting run. (Stub for testing the level loader.)",
+      "subtitle": "Pickets sent to slow you. (Stub introducing shooting enemies.)",
       "musicTrack": "level1",
       "theme": {
         "_doc": "Greenish tint to show theming differs from level 1.",
@@ -58,12 +58,12 @@
         "_doc": "Level completes when all waves have fired AND no enemies remain."
       },
       "waves": [
-        { "at": 1,  "type": "spawn", "formation": "v",       "enemyType": "asteroid_small",  "count": 5 },
-        { "at": 5,  "type": "spawn", "formation": "line_h",  "enemyType": "debris_chunk",    "count": 4 },
-        { "at": 8,  "type": "spawn", "formation": "random",  "enemyType": "asteroid_small",  "count": 6 },
-        { "at": 12, "type": "spawn", "formation": "single",  "enemyType": "asteroid_medium", "count": 1 },
-        { "at": 13, "type": "spawn", "formation": "single",  "enemyType": "asteroid_medium", "count": 1 },
-        { "at": 16, "type": "spawn", "formation": "v",       "enemyType": "asteroid_small",  "count": 5 }
+        { "at": 1,  "type": "spawn", "formation": "single",  "enemyType": "interceptor_small", "count": 1 },
+        { "at": 4,  "type": "spawn", "formation": "line_h",  "enemyType": "interceptor_small", "count": 3 },
+        { "at": 8,  "type": "spawn", "formation": "single",  "enemyType": "gunner_medium",     "count": 1 },
+        { "at": 11, "type": "spawn", "formation": "random",  "enemyType": "asteroid_small",    "count": 4 },
+        { "at": 14, "type": "spawn", "formation": "v",       "enemyType": "interceptor_small", "count": 3 },
+        { "at": 18, "type": "spawn", "formation": "single",  "enemyType": "gunner_medium",     "count": 1 }
       ]
     }
 

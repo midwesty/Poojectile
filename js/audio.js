@@ -58,6 +58,26 @@ const SFX = {
     noise.stop(t + 0.05);
   },
 
+  // ---------- Enemy fires (darker, lower than player) ----------
+  enemyShoot(ctx, dest) {
+    const t = ctx.currentTime;
+    // Sawtooth blip sweeping down, lower octave than player fire
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(380, t);
+    osc.frequency.exponentialRampToValueAtTime(140, t + 0.08);
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(1200, t);
+    f.frequency.exponentialRampToValueAtTime(400, t + 0.08);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.06, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.10);
+    osc.connect(f).connect(g).connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.11);
+  },
+
   // ---------- Projectile hits enemy ----------
   hit(ctx, dest) {
     const t = ctx.currentTime;

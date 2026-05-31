@@ -86,6 +86,36 @@
       "trailColor": "#4a9eff",
       "trailLength": 5,
       "lifetimeMs": 2000
+    },
+
+    "enemy_pellet": {
+      "id": "enemy_pellet",
+      "owner": "enemy",
+      "shape": "pellet",
+      "size": 4,
+      "speed": 380,
+      "damage": 1,
+      "color": "#ff3b3b",
+      "glowColor": "#ff5a5a",
+      "glowSize": 10,
+      "trailColor": "#ff3b3b",
+      "trailLength": 3,
+      "lifetimeMs": 3500
+    },
+
+    "enemy_orb": {
+      "id": "enemy_orb",
+      "owner": "enemy",
+      "shape": "orb",
+      "size": 8,
+      "speed": 240,
+      "damage": 2,
+      "color": "#ff6633",
+      "glowColor": "#ffaa66",
+      "glowSize": 16,
+      "trailColor": "#ff6633",
+      "trailLength": 4,
+      "lifetimeMs": 4000
     }
 
   },
